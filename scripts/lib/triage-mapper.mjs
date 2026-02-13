@@ -100,7 +100,7 @@ export function formatDetectionResults(detectedType, detectedTech, triageResult)
 		'playground': 'WordPress Playground',
 	};
 	
-	let result = '📦 Detected project:\n';
+	let result = 'Detected project:\n';
 	
 	if (detectedType) {
 		result += `  Type: ${typeLabels[detectedType] || detectedType}\n`;
@@ -109,17 +109,17 @@ export function formatDetectionResults(detectedType, detectedTech, triageResult)
 	}
 	
 	if (detectedTech.length > 0) {
-		result += `\n🔧 Detected technologies:\n`;
+		result += `\nDetected technologies:\n`;
 		detectedTech.forEach(tech => {
 			result += `  • ${techLabels[tech] || tech}\n`;
 		});
 	} else {
-		result += `\n🔧 Technologies: None detected\n`;
+		result += `\nTechnologies: None detected\n`;
 	}
 	
 	// Add any notes from triage
 	if (triageResult.project?.notes?.length > 0) {
-		result += `\n💡 Notes:\n`;
+		result += `\nNotes:\n`;
 		triageResult.project.notes.forEach(note => {
 			result += `  • ${note}\n`;
 		});
