@@ -101,7 +101,6 @@ async function main() {
 			const triageOutput = execSync(`cd "${targetDir}" && node "${triageScriptPath}"`, {
 				stdio: 'pipe',
 				encoding: 'utf-8',
-				shell: '/bin/bash',
 			});
 			
 			triageResult = JSON.parse(triageOutput);

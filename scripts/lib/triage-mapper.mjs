@@ -41,12 +41,6 @@ export function mapTechStack(triageResult) {
 		techStack.push('interactivity');
 	}
 	
-	// Check for REST API usage
-	if (signals.innerBlocksHints?.matches && Object.keys(signals.innerBlocksHints.matches).length > 0) {
-		// This is a heuristic; adjust based on actual REST API detection
-		// For now, we'll skip auto-detecting REST API as triage doesn't have a specific signal
-	}
-	
 	if (signals.usesWpCli) {
 		techStack.push('wpcli');
 	}
@@ -59,9 +53,6 @@ export function mapTechStack(triageResult) {
 	if (tooling.node?.hasPackageJson) {
 		techStack.push('npm');
 	}
-	
-	// Check for PHPStan in composer.json or phpstan.neon
-	// This would require reading composer.json, so for now we skip auto-detection
 	
 	// Check for playground blueprint
 	if (signals.hasPlaygroundBlueprint) {
