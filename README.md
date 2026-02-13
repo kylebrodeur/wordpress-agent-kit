@@ -34,10 +34,15 @@ npm run setup -- /path/to/your-wp-project
 ```
 
 This interactive setup helps you:
+- **Automatically detect** your project type and technologies
 - Customize `AGENTS.md` for your tech stack
-- Run project triage to detect your WordPress setup
 - Configure workflow instructions
 - Set up prompt templates
+
+The setup will analyze your project first and either:
+- Auto-configure if confident (1 confirmation prompt)
+- Pre-fill smart defaults if partially detected
+- Ask questions if detection is unclear
 
 This copies:
 - `.github/` (agents, skills, instructions, prompts)
