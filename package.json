@@ -20,7 +20,7 @@
   "scripts": {
     "install:kit": "node scripts/install.mjs",
     "sync:skills": "node scripts/sync-skills.mjs",
-    "setup": "node scripts/setup.mjs .",
+    "setup": "node scripts/setup.mjs",
     "playground": "node scripts/run-playground.mjs",
     "build:release": "node scripts/build-release.mjs"
   },
