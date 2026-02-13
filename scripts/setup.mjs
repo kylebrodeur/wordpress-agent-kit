@@ -7,8 +7,13 @@
 
 import * as p from '@clack/prompts';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { mapProjectType, mapTechStack, hasConfidentDetection, formatDetectionResults } from './lib/triage-mapper.mjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // TODO: Consider adding commander for proper --help, --version support
 // For now, simple filtering is sufficient for the single optional path argument
@@ -74,64 +79,118 @@ async function main() {
 		}
 	}
 
-	// Project info
-	const projectInfo = await p.group(
-		{
-			projectType: () =>
-				p.select({
-					message: 'What type of WordPress project is this?',
-					options: [
-						{ value: 'plugin', label: 'Plugin' },
-						{ value: 'theme', label: 'Theme' },
-						{ value: 'block-theme', label: 'Block Theme' },
-						{ value: 'site', label: 'Full Site / Multisite' },
-						{ value: 'blocks', label: 'Gutenberg Blocks' },
-						{ value: 'other', label: 'Other / Mixed' },
-					],
-				}),
-			techStack: () =>
-				p.multiselect({
-					message: 'Select technologies used in your project:',
-					options: [
-						{ value: 'gutenberg', label: 'Gutenberg Blocks', hint: 'block.json, @wordpress/blocks' },
-						{ value: 'interactivity', label: 'Interactivity API', hint: 'data-wp-* directives' },
-						{ value: 'rest-api', label: 'REST API', hint: 'Custom endpoints' },
-						{ value: 'wpcli', label: 'WP-CLI', hint: 'Custom commands' },
-						{ value: 'composer', label: 'Composer', hint: 'PHP dependencies' },
-						{ value: 'npm', label: 'npm/pnpm', hint: 'JS build process' },
-						{ value: 'phpstan', label: 'PHPStan', hint: 'Static analysis' },
-						{ value: 'playground', label: 'WordPress Playground', hint: 'Testing/demo' },
-					],
-					required: false,
-				}),
-			runTriage: () =>
-				p.confirm({
-					message: 'Run project triage to detect WordPress setup?',
-					initialValue: true,
-				}),
-		},
-		{
-			onCancel: () => {
-				p.cancel('Setup cancelled.');
-				process.exit(0);
-			},
-		}
-	);
-
-	// Run triage if requested
-	if (projectInfo.runTriage) {
+	// Run project triage BEFORE asking any questions
+	let triageResult = null;
+	let detectedType = null;
+	let detectedTech = [];
+	
+	const triageScriptPath = join(targetDir, '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs');
+	
+	if (existsSync(triageScriptPath)) {
 		const s = p.spinner();
 		s.start('Analyzing project structure...');
 		
-		// In real implementation, this would use the wp-project-triage skill
-		// For now, just simulate detection
-		await new Promise(resolve => setTimeout(resolve, 1500));
-		s.stop('Project analyzed.');
+		try {
+			const triageOutput = execSync(`node "${triageScriptPath}" "${targetDir}"`, {
+				stdio: 'pipe',
+				encoding: 'utf-8',
+			});
+			
+			triageResult = JSON.parse(triageOutput);
+			detectedType = mapProjectType(triageResult.project?.primary);
+			detectedTech = mapTechStack(triageResult);
+			
+			s.stop('Project analyzed.');
+		} catch (err) {
+			s.stop('Auto-detection unavailable.');
+			p.log.warn('Could not run project triage. Proceeding with manual setup.');
+		}
+	} else {
+		p.log.info('Project triage not available yet. Using manual setup.');
+	}
+
+	// Show detection results and ask for confirmation if confident
+	let useDetectedValues = false;
+	
+	if (triageResult && hasConfidentDetection(detectedType, detectedTech)) {
+		p.note(formatDetectionResults(detectedType, detectedTech, triageResult), 'Auto-Detection Results');
 		
-		p.note(
-			`Detected:\n- WordPress plugin/theme structure\n- Composer dependencies\n- Build scripts present`,
-			'Project Triage Results'
+		const confirmDetection = await p.confirm({
+			message: 'Use these detected values?',
+			initialValue: true,
+		});
+		
+		if (p.isCancel(confirmDetection)) {
+			p.cancel('Setup cancelled.');
+			process.exit(0);
+		}
+		
+		useDetectedValues = confirmDetection;
+	} else if (triageResult) {
+		// Partial detection - will be used as defaults
+		if (detectedType || detectedTech.length > 0) {
+			p.note(formatDetectionResults(detectedType, detectedTech, triageResult), 'Partial Detection (will be used as defaults)');
+		}
+	}
+
+	// Project info
+	let projectInfo;
+	
+	if (useDetectedValues) {
+		// Skip questions, use detected values
+		projectInfo = {
+			projectType: detectedType,
+			techStack: detectedTech,
+		};
+		p.log.success('Using auto-detected configuration.');
+	} else {
+		// Ask questions with detected values as defaults
+		projectInfo = await p.group(
+			{
+				projectType: () =>
+					p.select({
+						message: 'What type of WordPress project is this?',
+						options: [
+							{ value: 'plugin', label: 'Plugin' },
+							{ value: 'theme', label: 'Theme' },
+							{ value: 'block-theme', label: 'Block Theme' },
+							{ value: 'site', label: 'Full Site / Multisite' },
+							{ value: 'blocks', label: 'Gutenberg Blocks' },
+							{ value: 'other', label: 'Other / Mixed' },
+							{ value: 'unsure', label: "I'm not sure" },
+						],
+						initialValue: detectedType || undefined,
+					}),
+				techStack: () =>
+					p.multiselect({
+						message: 'Select technologies (or skip if unsure):',
+						options: [
+							{ value: 'gutenberg', label: 'Gutenberg Blocks', hint: 'block.json, @wordpress/blocks' },
+							{ value: 'interactivity', label: 'Interactivity API', hint: 'data-wp-* directives' },
+							{ value: 'rest-api', label: 'REST API', hint: 'Custom endpoints' },
+							{ value: 'wpcli', label: 'WP-CLI', hint: 'Custom commands' },
+							{ value: 'composer', label: 'Composer', hint: 'PHP dependencies' },
+							{ value: 'npm', label: 'npm/pnpm', hint: 'JS build process' },
+							{ value: 'phpstan', label: 'PHPStan', hint: 'Static analysis' },
+							{ value: 'playground', label: 'WordPress Playground', hint: 'Testing/demo' },
+						],
+						initialValues: detectedTech.length > 0 ? detectedTech : undefined,
+						required: false,
+					}),
+			},
+			{
+				onCancel: () => {
+					p.cancel('Setup cancelled.');
+					process.exit(0);
+				},
+			}
 		);
+		
+		// Handle "I'm not sure" selection
+		if (projectInfo.projectType === 'unsure') {
+			projectInfo.projectType = 'other';
+			p.log.info('Using "other" as project type. You can adjust AGENTS.md later.');
+		}
 	}
 
 	// Customize AGENTS.md
