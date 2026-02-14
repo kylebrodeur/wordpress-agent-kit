@@ -45,9 +45,17 @@ export function mapTechStack(triageResult) {
 		techStack.push('wpcli');
 	}
 	
+	if (signals.usesRestApi) {
+		techStack.push('rest-api');
+	}
+	
 	// Map tooling
 	if (tooling.php?.hasComposerJson) {
 		techStack.push('composer');
+	}
+	
+	if (tooling.php?.hasPhpStan) {
+		techStack.push('phpstan');
 	}
 	
 	if (tooling.node?.hasPackageJson) {

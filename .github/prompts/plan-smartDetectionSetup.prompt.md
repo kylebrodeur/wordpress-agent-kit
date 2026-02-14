@@ -176,14 +176,14 @@ npm run setup
 
 ## Implementation Checklist
 
-- [ ] Create new branch: `feature/smart-detection`
-- [ ] Step 1: Restructure flow, call real triage
-- [ ] Step 2: Implement detection mapper
-- [ ] Step 3: Add confidence check and smart prompting
-- [ ] Step 4: Enhance question options with "unsure"
-- [ ] Step 5: Remove redundant triage question
-- [ ] Step 6: Add error handling for edge cases
-- [ ] Test on multiple project types
-- [ ] Document new behavior in README
-- [ ] Optional: Create lib/triage-mapper.mjs module for clean separation
+- [x] Create new branch: `feature/smart-detection`
+- [x] Step 1: Restructure flow, call real triage
+- [x] Step 2: Implement detection mapper
+- [x] Step 3: Add confidence check and smart prompting
+- [x] Step 4: Enhance question options with "unsure"
+- [x] Step 5: Remove redundant triage question
+- [x] Step 6: Add error handling for edge cases
+- [x] Test on multiple project types
+- [x] Document new behavior in README
+- [x] Optional: Create lib/triage-mapper.mjs module for clean separation
 - [ ] Optional: Create lib/agents-generator.mjs for template-based AGENTS.md generation
