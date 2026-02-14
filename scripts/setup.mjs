@@ -8,17 +8,32 @@
 import * as p from '@clack/prompts';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { mapProjectType, mapTechStack, hasConfidentDetection, formatDetectionResults } from './lib/triage-mapper.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// TODO: Consider adding commander for proper --help, --version support
-// For now, simple filtering is sufficient for the single optional path argument
-const args = process.argv.slice(2).filter(arg => !arg.startsWith('-'));
-const targetPath = args[0] || process.cwd();
+// Parse arguments manually to support --dir flag and positional argument
+const argv = process.argv.slice(2);
+let targetPath = null;
+
+for (let i = 0; i < argv.length; i++) {
+	const arg = argv[i];
+	if (arg.startsWith('--dir=')) {
+		targetPath = arg.slice(6);
+	} else if (arg === '--dir') {
+		if (argv[i + 1]) {
+			targetPath = argv[i + 1];
+			i++;
+		}
+	} else if (!arg.startsWith('-') && !targetPath) {
+		targetPath = arg;
+	}
+}
+
+targetPath = targetPath || process.cwd();
 const targetDir = resolve(targetPath);
 
 async function main() {
@@ -84,28 +99,32 @@ async function main() {
 	let detectedType = null;
 	let detectedTech = [];
 	
-	// Try to find triage script in target directory first, then fall back to kit source
-	let triageScriptPath = join(targetDir, '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs');
+	// Try to find triage script in multiple locations
+	const triageScriptPaths = [
+		join(targetDir, '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+		join(process.cwd(), '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+		resolve(__dirname, '../vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+	];
 	
-	if (!existsSync(triageScriptPath)) {
-		// Fall back to kit source directory if not found in target
-		triageScriptPath = join(process.cwd(), '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs');
-	}
+	const triageScriptPath = triageScriptPaths.find(path => existsSync(path));
 	
-	if (existsSync(triageScriptPath)) {
+	if (triageScriptPath) {
 		const s = p.spinner();
 		s.start('Analyzing project structure...');
 		
 		try {
-			// The triage script uses process.cwd() as repoRoot, so we need to run it from targetDir
-			const triageOutput = execSync(`cd "${targetDir}" && node "${triageScriptPath}"`, {
-				stdio: 'pipe',
+			// Use spawnSync with cwd set to target directory
+			// The triage script uses process.cwd() as repoRoot
+			const result = spawnSync('node', [triageScriptPath], {
+				cwd: targetDir,
 				encoding: 'utf-8',
 			});
 			
-			triageResult = JSON.parse(triageOutput);
-			detectedType = mapProjectType(triageResult.project?.primary);
-			detectedTech = mapTechStack(triageResult);
+			if (result.status === 0 && result.stdout) {
+				triageResult = JSON.parse(result.stdout.trim());
+				detectedType = mapProjectType(triageResult.project?.primary);
+				detectedTech = mapTechStack(triageResult);
+			}
 			
 			s.stop('Project analyzed.');
 		} catch (err) {
