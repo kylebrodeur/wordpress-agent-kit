@@ -13,3 +13,6 @@ package-lock.json
 
 # Personal development settings (not for distribution)
 .vscode/
+
+# Pi agent config (user-specific)
+.pi/
