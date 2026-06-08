@@ -2,15 +2,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 
+/** Supported AI tool platforms */
+export type Platform = 'github' | 'cursor' | 'claude' | 'agent' | 'pi';
+
 /**
- * Installs the WordPress Agent Kit into the specified directory.
- * Copies the .github directory and AGENTS.md template.
+ * Platform-specific folder names
+ */
+export const PLATFORM_FOLDERS: Record<Platform, string> = {
+  github: '.github',
+  cursor: '.cursor',
+  claude: '.claude',
+  agent: '.agent',
+  pi: '.pi/agent',
+};
+
+/**
+ * Installs the WordPress Agent Kit into the specified directory for a given platform.
+ * Copies the platform-specific folder and AGENTS.md template.
  *
  * @param {string} targetDir - The directory where the kit should be installed.
+ * @param {Platform} platform - The target platform (github, cursor, claude, agent)
  * @returns {Promise<void>}
  */
-export async function installKit(targetDir: string) {
-    console.log(`Installing WordPress Agent Kit into: ${targetDir}`);
+export async function installKit(targetDir: string, platform: Platform = 'github') {
+    const platformFolder = PLATFORM_FOLDERS[platform];
+    console.log(`Installing WordPress Agent Kit (${platform}) into: ${targetDir}`);
 
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
@@ -18,15 +34,15 @@ export async function installKit(targetDir: string) {
 
     const templatePath = path.join(PACKAGE_ROOT, 'AGENTS.template.md');
     const agentsPath = path.join(PACKAGE_ROOT, 'AGENTS.md');
-    const githubPath = path.join(PACKAGE_ROOT, '.github');
+    const sourceGithub = path.join(PACKAGE_ROOT, '.github');
 
-    // Copy .github folder
-    const targetGithub = path.join(targetDir, '.github');
-    if (fs.existsSync(targetGithub)) {
-      fs.rmSync(targetGithub, { recursive: true, force: true });
+    // Copy platform-specific folder
+    const targetPlatform = path.join(targetDir, platformFolder);
+    if (fs.existsSync(targetPlatform)) {
+      fs.rmSync(targetPlatform, { recursive: true, force: true });
     }
-    if (fs.existsSync(githubPath)) {
-        fs.cpSync(githubPath, targetGithub, { recursive: true });
+    if (fs.existsSync(sourceGithub)) {
+        fs.cpSync(sourceGithub, targetPlatform, { recursive: true });
     } else {
         throw new Error('Could not find source .github directory.');
     }

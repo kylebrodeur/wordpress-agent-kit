@@ -28,7 +28,7 @@ describe('installKit', () => {
     await installKit(mockTargetDir);
 
     expect(consoleLogSpy).toHaveBeenCalledWith(
-      `Installing WordPress Agent Kit into: ${mockTargetDir}`
+      `Installing WordPress Agent Kit (github) into: ${mockTargetDir}`
     );
   });
 
@@ -69,7 +69,7 @@ describe('installKit', () => {
     expect(fs.rmSync).toHaveBeenCalledWith(targetGithub, { recursive: true, force: true });
   });
 
-  it('should copy .github directory', async () => {
+  it('should copy .github directory to platform folder', async () => {
     const targetGithub = path.join(mockTargetDir, '.github');
     const githubPath = path.join(PACKAGE_ROOT, '.github');
     vi.mocked(fs.existsSync).mockReturnValue(true);

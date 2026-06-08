@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { PACKAGE_ROOT } from '../utils/paths.js';
-import { installKit } from '../lib/installer.js';
+import { installKit, type Platform, PLATFORM_FOLDERS } from '../lib/installer.js';
 import { mapProjectType, mapTechStack, hasConfidentDetection, formatDetectionResults } from '../lib/triage-mapper.js';
 
 /**
@@ -15,7 +15,18 @@ export const setupCommand = new Command('setup')
   .description('Interactive setup for WordPress Agent Kit')
   .argument('[dir]', 'Target directory', process.cwd())
   .option('--reset', 'Reset and overwrite existing configuration')
+  .option('--platform <platform>', 'Target platform (github, cursor, claude, agent, pi)', 'github')
   .action(async (dir, options) => {
+    const platform = options.platform as Platform;
+    const validPlatforms: Platform[] = ['github', 'cursor', 'claude', 'agent', 'pi'];
+    
+    if (!validPlatforms.includes(platform)) {
+        console.error(`Invalid platform: ${platform}. Valid options: ${validPlatforms.join(', ')}`);
+        process.exit(1);
+    }
+
+    const platformFolder = PLATFORM_FOLDERS[platform];
+
     console.clear();
     p.intro('WordPress Agent Kit Setup');
 
@@ -42,15 +53,15 @@ export const setupCommand = new Command('setup')
       }
     }
 
-    p.log.info(`Setting up kit in: ${targetDir}`);
+    p.log.info(`Setting up kit in: ${targetDir} (platform: ${platform})`);
 
     // Check if kit is already installed
     const agentsPath = path.join(targetDir, 'AGENTS.md');
-    const workflowPath = path.join(targetDir, '.github/instructions/wordpress-workflow.instructions.md');
+    const platformInstructionsPath = path.join(targetDir, platformFolder, 'instructions', 'wordpress-workflow.instructions.md');
 
     if (options.reset && fs.existsSync(agentsPath)) {
         const confirmReset = await p.confirm({
-            message: 'Warning: --reset will overwrite existing AGENTS.md and .github configuration. Continue?',
+            message: `Warning: --reset will overwrite existing AGENTS.md and ${platformFolder} configuration. Continue?`,
             initialValue: false,
         });
 
@@ -63,7 +74,7 @@ export const setupCommand = new Command('setup')
         const s = p.spinner();
         s.start('Re-installing kit files...');
         try {
-            await installKit(targetDir);
+            await installKit(targetDir, platform);
             s.stop('Kit files reset.');
         } catch (err: any) {
             s.stop('Reset failed.');
@@ -85,7 +96,7 @@ export const setupCommand = new Command('setup')
       s.start('Installing kit files...');
       
       try {
-        await installKit(targetDir);
+        await installKit(targetDir, platform);
         s.stop('Kit installed successfully.');
       } catch (err: any) {
         s.stop('Installation failed.');
@@ -101,8 +112,8 @@ export const setupCommand = new Command('setup')
 
     // Try to find triage script in multiple locations
     const triageScriptPaths = [
-      path.join(targetDir, '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
-      path.join(process.cwd(), '.github/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+      path.join(targetDir, platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+      path.join(process.cwd(), platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
       path.resolve(PACKAGE_ROOT, 'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
     ];
 
@@ -243,7 +254,7 @@ export const setupCommand = new Command('setup')
     }
     
     // Workflow instructions
-    if (fs.existsSync(workflowPath)) {
+    if (fs.existsSync(platformInstructionsPath)) {
         const customizeWorkflow = await p.confirm({
             message: 'Open workflow instructions for manual editing?',
             initialValue: false,
@@ -251,17 +262,18 @@ export const setupCommand = new Command('setup')
 
         if (!p.isCancel(customizeWorkflow) && customizeWorkflow) {
             p.note(
-                `Edit: ${workflowPath}\n\nAdd your project-specific:\n- Coding standards\n- Git workflow\n- Testing procedures\n- Deployment steps`,
+                `Edit: ${platformInstructionsPath}\n\nAdd your project-specific:\n- Coding standards\n- Git workflow\n- Testing procedures\n- Deployment steps`,
                 'Workflow Instructions'
             );
         }
     }
 
+    const promptsFolder = path.join(targetDir, platformFolder, 'prompts');
     p.note(
         `✓ Kit installed and configured\n\n` +
         `Next steps:\n` +
         `1. Review ${agentsPath}\n` +
-        `2. Customize .github/prompts/ for your domain\n` +
+        `2. Customize ${promptsFolder}/ for your domain\n` +
         `3. Test with: ${projectInfo.projectType === 'plugin' ? '"Create a new settings page"' : '"Generate a block variation"'}\n` +
         `4. Adjust skills loading in AGENTS.md as needed`,
         'Setup Complete'

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import path from 'node:path';
-import { installKit } from '../lib/installer.js';
+import { installKit, type Platform } from '../lib/installer.js';
 
 /**
  * Command to install the WordPress Agent Kit into a target directory.
@@ -9,15 +9,19 @@ import { installKit } from '../lib/installer.js';
 export const installCommand = new Command('install')
   .description('Install the WordPress Agent Kit into a target directory')
   .argument('[dir]', 'Target directory to install into', process.cwd())
-  .action(async (dir) => {
-      // If the directory argument is provided, commander passes it as first arg.
-      // If default is used, it's process.cwd().
-      // Wait, specific behavior:
-      // If I invoke `wp-agent-kit install` without args, dir is process.cwd().
-      // If I invoke `wp-agent-kit install my-dir`, dir is 'my-dir'.
+  .option('--platform <platform>', 'Target platform (github, cursor, claude, agent, pi)', 'github')
+  .action(async (dir, options) => {
+      const platform = options.platform as Platform;
+      const validPlatforms: Platform[] = ['github', 'cursor', 'claude', 'agent', 'pi'];
+      
+      if (!validPlatforms.includes(platform)) {
+          console.error(`Invalid platform: ${platform}. Valid options: ${validPlatforms.join(', ')}`);
+          process.exit(1);
+      }
+
       const targetDir = path.resolve(dir);
       try {
-          await installKit(targetDir);
+          await installKit(targetDir, platform);
       } catch (error: any) {
           console.error(error.message);
           process.exit(1);

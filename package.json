@@ -19,7 +19,7 @@
     "node": ">=20.18"
   },
   "bin": {
-    "wp-agent-kit": "./dist/cli.js"
+    "wp-agent-kit": "dist/cli.js"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",
