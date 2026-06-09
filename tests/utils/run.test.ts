@@ -5,13 +5,13 @@ import { run } from '../../src/utils/run.js';
 vi.mock('node:child_process');
 
 describe('run', () => {
-	let consoleErrorSpy: any;
-	let processExitSpy: any;
+	let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+	let processExitSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+		processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 	});
 
 	afterEach(() => {

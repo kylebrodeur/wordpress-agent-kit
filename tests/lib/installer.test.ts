@@ -8,7 +8,7 @@ vi.mock('node:fs');
 
 describe('installKit', () => {
 	const mockTargetDir = '/test/target';
-	let consoleLogSpy: any;
+	let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
