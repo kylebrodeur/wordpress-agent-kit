@@ -1,6 +1,6 @@
 {
   "name": "wordpress-agent-kit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "WordPress-focused AGENTS.md + Agent Skills starter kit for AI coding agents.",
   "license": "GPL-2.0-or-later",
   "author": "Kyle Brodeur <kyle@brodeur.me> (https://brodeur.me)",
@@ -25,10 +25,15 @@
     "dev": "tsx src/cli.ts",
     "build": "tsc",
     "check": "tsc --noEmit",
-    "lint": "eslint src/ --fix",
+    "lint": "eslint src/ tests/ --fix && biome check --write .",
+    "lint:check": "eslint src/ tests/ && biome check .",
+    "format": "prettier --write . && biome format --write .",
+    "format:check": "prettier --check . && biome format --check .",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "prepare": "husky",
+    "prepublishOnly": "pnpm run build && pnpm run lint:check && pnpm run test:run",
     "install:kit": "tsx src/cli.ts install",
     "sync:skills": "tsx src/cli.ts sync-skills",
     "setup": "tsx src/cli.ts setup",
@@ -40,10 +45,12 @@
     "commander": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.1",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.16.0",
+    "husky": "^9.1.6",
     "prettier": "^3.4.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
@@ -51,5 +58,10 @@
     "typescript-eslint": "^8.18.0",
     "vitest": "^2.1.8",
     "@earendil-works/pi-coding-agent": "^0.78.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-xml-parser": ">=5.7.0"
+    }
   }
 }

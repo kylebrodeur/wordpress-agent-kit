@@ -3,9 +3,10 @@
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.2-blue?style=flat-square)](package.json)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 
-**WordPress-focused AI agent starter kit** for GitHub Copilot, Claude, and other LLM coding agents. Includes instructions, specialized WordPress skills, and workflow automation aligned with industry standards.
+**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and other LLM coding agents. Includes instructions, specialized WordPress skills, and workflow automation aligned with industry standards.
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
 
@@ -13,106 +14,178 @@ Maintained by [Kyle Brodeur](https://brodeur.me).
 
 ### Option 1: CLI (Recommended)
 
-Run the interactive setup wizard:
-
+#### Interactive Setup Wizard
 ```bash
 npx wp-agent-kit setup
 # or
 pnpm dlx wp-agent-kit setup
 ```
 
-This will:
-- Detect your WordPress project type
-- Install `AGENTS.md` and skills into your project
-- Configure for your tech stack
+#### Non-Interactive (CI/Agent-Friendly)
+```bash
+# Auto-detect project type and tech stack
+pnpm dlx wp-agent-kit setup --auto --json
+
+# Or specify explicitly (for full automation)
+pnpm dlx wp-agent-kit setup --project-type plugin --tech-stack gutenberg,rest-api,composer --platform github --yes --json
+```
+
+#### Install Only (No Configuration)
+```bash
+# For GitHub Copilot / VS Code
+pnpm dlx wp-agent-kit@latest install --platform github
+
+# For Cursor IDE
+pnpm dlx wp-agent-kit@latest install --platform cursor
+
+# For Pi Coding Agent (recommended)
+pnpm dlx wp-agent-kit@latest install --platform pi
+
+# For generic .agent workflows
+pnpm dlx wp-agent-kit@latest install --platform agent
+```
 
 ### Option 2: Pre-built Bundles
 
-Download a bundle from the [latest release](https://github.com/kylebrodeur/wordpress-agent-kit/releases):
-
-- **`wordpress-agent-kit-github.tar.gz`** - For GitHub Copilot
-- **`wordpress-agent-kit-claude.tar.gz`** - For Claude
-- **`wordpress-agent-kit-agent.tar.gz`** - For generic `.agent` workflows
-- **`wordpress-agent-kit-cursor.tar.gz`** - For Cursor IDE
-
-Extract into your WordPress project root:
+Download from the [latest release](https://github.com/kylebrodeur/wordpress-agent-kit/releases):
+- `wordpress-agent-kit-github.tar.gz` — GitHub Copilot
+- `wordpress-agent-kit-cursor.tar.gz` — Cursor IDE
+- `wordpress-agent-kit-claude.tar.gz` — Claude
+- `wordpress-agent-kit-agent.tar.gz` — Generic `.agent`
 
 ```bash
 cd /path/to/your-wordpress-project
 tar -xzf wordpress-agent-kit-github.tar.gz
 ```
 
-This interactive setup helps you:
-- **Automatically detect** your project type and technologies.
-- Customize `AGENTS.md` for your tech stack.
-- Configure workflow instructions.
-- Set up prompt templates.
+## Agent-Friendly Features (v0.2.2+)
 
-Use the `--reset` flag if you need to re-run the setup on an existing project:
-
+### Structured JSON Output (`--json`)
+All commands output machine-readable JSON for programmatic use:
 ```bash
-pnpm setup -- /path/to/your-wp-project --reset
+wp-agent-kit install --platform github --json
+# {"success":true,"data":{"targetDir":"/path","platform":"github","filesCreated":[...],"durationMs":35}}
 ```
 
-The setup will analyze your project first and either:
-- Auto-configure if confident.
-- Pre-fill smart defaults if partially detected.
-- Ask questions if detection is unclear.
+### Headless/Non-Interactive Mode
+```bash
+# Auto-detection
+wp-agent-kit setup --auto --json
 
-## Who This Is For
+# Explicit config (CI/CD ready)
+wp-agent-kit setup --project-type plugin --tech-stack gutenberg,rest-api --platform github --yes --json
+```
 
-- **WordPress plugin/theme developers** who want AI agents to understand WordPress conventions (hooks, sanitization, Settings API, block registration, etc.).
-- **Teams adopting GitHub Copilot or Claude** for WordPress codebases.
-- **Anyone building custom WordPress workflows** who needs agents to follow WordPress Coding Standards, security best practices, and core APIs.
+### Dry-Run Preview (`--dry-run`)
+```bash
+wp-agent-kit install --platform github --dry-run --json
+wp-agent-kit setup --project-type plugin --dry-run --json
+```
 
-## What You Get
+### Upgrade Existing Installations
+```bash
+# Check for updates
+wp-agent-kit upgrade --check-only --json
 
-- **Agent Skills**: WordPress-specific knowledge modules (blocks, Interactivity API, REST API, WP-CLI, performance, security, theme.json, Playground, PHPStan, etc.).
-- **Instructions & Workflows**: Pre-built guidance for common WordPress dev cycles.
-- **AGENTS.md**: Single-file agent onboarding that loads skills on demand.
-- **Sync Scripts**: Pull latest skills from official [WordPress/agent-skills](https://github.com/WordPress/agent-skills) repository.
+# Apply upgrade
+wp-agent-kit upgrade --force --json
+```
+
+### Programmatic API
+```typescript
+import { installKitApi, syncSkillsApi, runTriageApi, configureAgentsMdApi } from 'wordpress-agent-kit/api';
+
+await installKitApi({ targetDir: '/path', platform: 'github', force: true });
+await syncSkillsApi({ ref: 'trunk' });
+const triage = await runTriageApi({ targetDir: '/path' });
+await configureAgentsMdApi({ targetDir: '/path', platform: 'github', config: { projectType: 'plugin', techStack: ['gutenberg'] }});
+```
+
+### Semantic Exit Codes
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Invalid arguments |
+| 3 | Not found (ENOENT) |
+| 4 | Permission denied |
+| 5 | Already exists (use --force) |
+| 6 | Git error |
+| 7 | Network error |
+| 8 | Validation failed |
+| 130 | Cancelled (SIGINT) |
+
+## Platform Comparison
+
+| Platform | Target Dir | Interactive? | Best For |
+|----------|------------|--------------|----------|
+| `pi` | `.pi/agent/skills/` | ❌ | **Pi Coding Agent** |
+| `github` | `.github/skills/` | ❌ | GitHub Copilot, VS Code |
+| `cursor` | `.cursor/skills/` | ❌ | Cursor IDE |
+| `agent` | `.agent/skills/` | ❌ | Generic `.agent` workflows |
+| `claude` | `.claude/skills/` | ✅ | Claude Code (interactive) |
+
+## Commands Reference
+
+| Command | Description |
+|---------|-------------|
+| `install [dir] --platform <p> [--force] [--dry-run] [--json]` | Install kit to target directory |
+| `setup [dir] [--auto] [--project-type] [--tech-stack] [--yes] [--json]` | Interactive or headless setup |
+| `sync-skills [ref] [--dry-run] [--json]` | Sync skills from WordPress/agent-skills |
+| `playground [--port] [--no-auto-mount] [--json]` | Run local WordPress Playground |
+| `upgrade [dir] [--platform] [--force] [--check-only] [--json]` | Upgrade existing installation |
 
 ## Development
 
-This project uses a TypeScript-based CLI for all operations.
-
 ### Build CLI
-
 ```bash
 pnpm build
 ```
 
-### Build Release Bundles
-
+### Run Tests
 ```bash
-pnpm sync:skills  # Sync latest WordPress skills first
+pnpm test:run
+```
+
+### Lint & Format
+```bash
+pnpm run lint:check    # Check only
+pnpm run lint          # Auto-fix
+pnpm run format:check  # Check formatting
+pnpm run format        # Auto-format
+```
+
+### Build Release Bundles
+```bash
+pnpm sync:skills
 pnpm build:bundles
 ```
 
-This generates four platform-specific bundles in `dist/bundles/`:
-- `wordpress-agent-kit-github.tar.gz`
-- `wordpress-agent-kit-claude.tar.gz`
-- `wordpress-agent-kit-agent.tar.gz`
-- `wordpress-agent-kit-cursor.tar.gz`
-
-### Run Tests
-
+### Pre-Publish (Runs All Checks)
 ```bash
-pnpm test
+pnpm run prepublishOnly
 ```
 
 ## Customization
 
-**Quick method:** Run the interactive setup.
+**Quick method:** Run the interactive or headless setup.
 
 **Manual method:** Edit files directly:
-
 1. Edit `AGENTS.md` to match your project's tech stack and conventions.
 2. Run WordPress project triage (via `wp-project-triage` skill) to generate tailored instructions.
 3. Update `.github/instructions/wordpress-workflow.instructions.md` with your workflow.
 4. Keep prompts in `.github/prompts/` accurate for your plugin/theme.
 
+## CI/CD Integration
+
+```yaml
+# GitHub Actions example
+- name: Install WordPress Agent Kit
+  run: pnpm dlx wordpress-agent-kit@latest install --platform github --json
+```
+
 ## Credits
 
 - **[AGENTS.md](https://agentskills.io)** - The agent configuration standard.
 - **[AgentSkills.io](https://agentskills.io)** - The open directory of agent skills.
+- **[WordPress/agent-skills](https://github.com/WordPress/agent-skills)** - Upstream skills repository.

@@ -1,283 +1,370 @@
-import { Command } from 'commander';
-import * as p from '@clack/prompts';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import * as p from '@clack/prompts';
+import { Command } from 'commander';
+import {
+	type CliResult,
+	type ConfigureResult,
+	type DryRunResult,
+	type Platform,
+	type ProjectConfig,
+	configureAgentsMdApi,
+	installKitApi,
+	runTriageApi,
+	syncSkillsApi,
+} from '../lib/api.js';
+import { PLATFORM_FOLDERS } from '../lib/installer.js';
+import {
+	formatDetectionResults,
+	hasConfidentDetection,
+	mapProjectType,
+	mapTechStack,
+} from '../lib/triage-mapper.js';
+import { ExitCode } from '../utils/exit-codes.js';
+import { OutputFormatter, createFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
-import { installKit, type Platform, PLATFORM_FOLDERS } from '../lib/installer.js';
-import { mapProjectType, mapTechStack, hasConfidentDetection, formatDetectionResults } from '../lib/triage-mapper.js';
+
+const VALID_PROJECT_TYPES = ['plugin', 'theme', 'block-theme', 'site', 'blocks', 'other'] as const;
+type ProjectType = (typeof VALID_PROJECT_TYPES)[number];
+
+function isValidProjectType(type: string): type is ProjectType {
+	return VALID_PROJECT_TYPES.includes(type as ProjectType);
+}
+
+function isDryRunResult<T>(
+	result: CliResult<T | DryRunResult<T>>
+): result is CliResult<DryRunResult<T>> & { success: true; data: DryRunResult<T> } {
+	return result.success && 'wouldExecute' in (result.data || {});
+}
+
+function isRegularResult<T>(
+	result: CliResult<T | DryRunResult<T>>
+): result is CliResult<T> & { success: true; data: T } {
+	return result.success && !('wouldExecute' in (result.data || {}));
+}
+
+function getResultData<T>(
+	result: CliResult<T | DryRunResult<T>>
+): (T | DryRunResult<T>) | undefined {
+	if (!result.success || !result.data) return undefined;
+	if (isDryRunResult(result)) {
+		return result.data.summary;
+	}
+	return result.data;
+}
 
 /**
- * Command to interactively set up the WordPress Agent Kit.
- * Handles detection of project type, installation, and configuration of AGENTS.md.
+ * Interactive/Headless setup for WordPress Agent Kit.
+ * Supports both interactive prompts and --auto/--project-type/--tech-stack for headless use.
  */
 export const setupCommand = new Command('setup')
-  .description('Interactive setup for WordPress Agent Kit')
-  .argument('[dir]', 'Target directory', process.cwd())
-  .option('--reset', 'Reset and overwrite existing configuration')
-  .option('--platform <platform>', 'Target platform (github, cursor, claude, agent, pi)', 'github')
-  .action(async (dir, options) => {
-    const platform = options.platform as Platform;
-    const validPlatforms: Platform[] = ['github', 'cursor', 'claude', 'agent', 'pi'];
-    
-    if (!validPlatforms.includes(platform)) {
-        console.error(`Invalid platform: ${platform}. Valid options: ${validPlatforms.join(', ')}`);
-        process.exit(1);
-    }
+	.description('Interactive or headless setup for WordPress Agent Kit')
+	.argument('[dir]', 'Target directory', process.cwd())
+	.option('--reset', 'Reset and overwrite existing configuration')
+	.option('--platform <platform>', 'Target platform (github, cursor, claude, agent, pi)', 'github')
+	.option('--auto', 'Run triage, apply detected values, skip prompts', false)
+	.option('--project-type <type>', 'Project type: plugin, theme, block-theme, site, blocks, other')
+	.option(
+		'--tech-stack <list>',
+		'Comma-separated tech: gutenberg,interactivity,rest-api,wpcli,composer,phpstan,npm,playground'
+	)
+	.option('--package-manager <pm>', 'Package manager: npm, pnpm, yarn')
+	.option('-y, --yes', 'Accept all confirmations (requires --project-type in headless mode)')
+	.action(async (dir: string, options, command) => {
+		const globalOpts = command.parent?.opts() || {};
+		const platform = options.platform;
+		const validPlatforms: Platform[] = ['github', 'cursor', 'claude', 'agent', 'pi'];
 
-    const platformFolder = PLATFORM_FOLDERS[platform];
+		if (!validPlatforms.includes(platform)) {
+			const formatter = createFormatter(globalOpts, 'setup', '0.0.0');
+			const result = formatter.fail({
+				code: 'INVALID_PLATFORM',
+				message: `Invalid platform: ${platform}. Valid options: ${validPlatforms.join(', ')}`,
+				exitCode: ExitCode.INVALID_ARGS,
+			});
+			process.exit(OutputFormatter.getExitCode(result));
+		}
 
-    console.clear();
-    p.intro('WordPress Agent Kit Setup');
+		const formatter = createFormatter(globalOpts, 'setup', '0.0.0');
+		const targetDir = path.resolve(dir);
+		const platformFolder = PLATFORM_FOLDERS[platform as Platform];
+		const isHeadless = options.auto || options.projectType || globalOpts.json || globalOpts.quiet;
 
-    const targetDir = path.resolve(dir);
+		// Create target directory if needed
+		if (!fs.existsSync(targetDir)) {
+			if (isHeadless) {
+				fs.mkdirSync(targetDir, { recursive: true });
+			} else {
+				const shouldCreate = await p.confirm({
+					message: `Target directory doesn't exist: ${targetDir}\nCreate it?`,
+					initialValue: true,
+				});
+				if (p.isCancel(shouldCreate) || !shouldCreate) {
+					const result = formatter.fail({
+						code: 'CANCELLED',
+						message: 'Setup cancelled.',
+						exitCode: ExitCode.CANCELLED,
+					});
+					process.exit(OutputFormatter.getExitCode(result));
+				}
+				fs.mkdirSync(targetDir, { recursive: true });
+			}
+		}
 
-    // Check if target directory exists
-    if (!fs.existsSync(targetDir)) {
-      const shouldCreate = await p.confirm({
-        message: `Target directory doesn't exist: ${targetDir}\nCreate it?`,
-        initialValue: true,
-      });
+		// Install kit if not present or --reset
+		const agentsPath = path.join(targetDir, 'AGENTS.md');
+		const needsInstall = options.reset || !fs.existsSync(agentsPath);
 
-      if (p.isCancel(shouldCreate) || !shouldCreate) {
-        p.cancel('Setup cancelled.');
-        process.exit(0);
-      }
+		if (needsInstall) {
+			if (!isHeadless) {
+				const shouldInstall = await p.confirm({
+					message: 'Kit not found in target repo. Install it first?',
+					initialValue: true,
+				});
+				if (p.isCancel(shouldInstall) || !shouldInstall) {
+					const result = formatter.fail({
+						code: 'CANCELLED',
+						message: 'Setup cancelled.',
+						exitCode: ExitCode.CANCELLED,
+					});
+					process.exit(OutputFormatter.getExitCode(result));
+				}
+			}
 
-      try {
-        fs.mkdirSync(targetDir, { recursive: true });
-        p.log.success(`Created directory: ${targetDir}`);
-      } catch (err: any) {
-        p.log.error(`Failed to create directory: ${err.message}`);
-        process.exit(1);
-      }
-    }
+			const installResult = await installKitApi({
+				targetDir,
+				platform,
+				force: options.reset,
+				dryRun: globalOpts.dryRun,
+			});
 
-    p.log.info(`Setting up kit in: ${targetDir} (platform: ${platform})`);
+			if (!installResult.success) {
+				process.exit(OutputFormatter.getExitCode(installResult));
+			}
 
-    // Check if kit is already installed
-    const agentsPath = path.join(targetDir, 'AGENTS.md');
-    const platformInstructionsPath = path.join(targetDir, platformFolder, 'instructions', 'wordpress-workflow.instructions.md');
+			if (globalOpts.json || globalOpts.quiet) {
+				// Continue silently in headless mode
+			} else {
+				console.log('✓ Kit installed');
+			}
+		}
 
-    if (options.reset && fs.existsSync(agentsPath)) {
-        const confirmReset = await p.confirm({
-            message: `Warning: --reset will overwrite existing AGENTS.md and ${platformFolder} configuration. Continue?`,
-            initialValue: false,
-        });
+		// Run project triage
+		let triageResult: any = null;
+		let detectedType: string | null = null;
+		let detectedTech: string[] = [];
+		let detectedPackageManager = 'npm/pnpm';
 
-        if (p.isCancel(confirmReset) || !confirmReset) {
-            p.cancel('Reset cancelled.');
-            process.exit(0);
-        }
-        
-        // Force install if reset is confirmed
-        const s = p.spinner();
-        s.start('Re-installing kit files...');
-        try {
-            await installKit(targetDir, platform);
-            s.stop('Kit files reset.');
-        } catch (err: any) {
-            s.stop('Reset failed.');
-            console.error(err.message);
-            process.exit(1);
-        }
-    } else if (!fs.existsSync(agentsPath)) {
-      const shouldInstall = await p.confirm({
-        message: 'Kit not found in target repo. Install it first?',
-        initialValue: true,
-      });
+		const triageScriptPaths = [
+			path.join(
+				targetDir,
+				platformFolder,
+				'skills/wp-project-triage/scripts/detect_wp_project.mjs'
+			),
+			path.join(
+				PACKAGE_ROOT,
+				'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'
+			),
+		];
 
-      if (p.isCancel(shouldInstall) || !shouldInstall) {
-        p.cancel('Setup cancelled.');
-        process.exit(0);
-      }
+		const triageScriptPath = triageScriptPaths.find((p) => fs.existsSync(p));
 
-      const s = p.spinner();
-      s.start('Installing kit files...');
-      
-      try {
-        await installKit(targetDir, platform);
-        s.stop('Kit installed successfully.');
-      } catch (err: any) {
-        s.stop('Installation failed.');
-        console.error(err.message);
-        process.exit(1);
-      }
-    }
+		if (triageScriptPath) {
+			const result = spawnSync('node', [triageScriptPath], {
+				cwd: targetDir,
+				encoding: 'utf-8',
+			});
 
-    // Run project triage BEFORE asking any questions
-    let triageResult: any = null;
-    let detectedType: string | null = null;
-    let detectedTech: string[] = [];
+			if (result.status === 0 && result.stdout) {
+				triageResult = JSON.parse(result.stdout.trim());
+				detectedType = mapProjectType(triageResult.project?.primary);
+				detectedTech = mapTechStack(triageResult);
+				if (triageResult.tooling?.node?.packageManager) {
+					detectedPackageManager = triageResult.tooling.node.packageManager;
+				}
+			}
+		}
 
-    // Try to find triage script in multiple locations
-    const triageScriptPaths = [
-      path.join(targetDir, platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
-      path.join(process.cwd(), platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
-      path.resolve(PACKAGE_ROOT, 'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'),
-    ];
+		// Determine project config
+		let projectConfig: ProjectConfig;
 
-    const triageScriptPath = triageScriptPaths.find(p => fs.existsSync(p));
+		if (options.auto && triageResult) {
+			// Auto mode: use detected values
+			if (!detectedType || detectedType === 'other') {
+				const result = formatter.fail({
+					code: 'AUTO_DETECTION_FAILED',
+					message:
+						'Auto-detection could not determine project type confidently. Use --project-type explicitly.',
+					exitCode: ExitCode.VALIDATION_ERROR,
+				});
+				process.exit(OutputFormatter.getExitCode(result));
+			}
+			projectConfig = {
+				projectType: detectedType as ProjectType,
+				techStack: detectedTech,
+				packageManager: detectedPackageManager,
+			};
+			if (!globalOpts.json && !globalOpts.quiet) {
+				console.log(`Auto-detected: ${detectedType} (${detectedTech.join(', ')})`);
+			}
+		} else if (options.projectType) {
+			// Explicit project type provided (headless)
+			if (!isValidProjectType(options.projectType)) {
+				const result = formatter.fail({
+					code: 'INVALID_PROJECT_TYPE',
+					message: `Invalid project type: ${options.projectType}. Valid: ${VALID_PROJECT_TYPES.join(', ')}`,
+					exitCode: ExitCode.INVALID_ARGS,
+				});
+				process.exit(OutputFormatter.getExitCode(result));
+			}
+			projectConfig = {
+				projectType: options.projectType as ProjectType,
+				techStack: options.techStack
+					? options.techStack.split(',').map((s: string) => s.trim())
+					: detectedTech,
+				packageManager: options.packageManager || detectedPackageManager,
+			};
+		} else if (isHeadless) {
+			// Headless without enough info
+			const result = formatter.fail({
+				code: 'MISSING_CONFIG',
+				message:
+					'Headless mode requires --project-type (and optionally --tech-stack). Use --auto for auto-detection.',
+				exitCode: ExitCode.INVALID_ARGS,
+			});
+			process.exit(OutputFormatter.getExitCode(result));
+		} else {
+			// Interactive mode - prompt user
+			if (!globalOpts.json && !globalOpts.quiet) {
+				console.clear();
+				p.intro('WordPress Agent Kit Setup');
+				console.log(`Setting up kit in: ${targetDir} (platform: ${platform})`);
+			}
 
-    if (triageScriptPath) {
-      const s = p.spinner();
-      s.start('Analyzing project structure...');
-      
-      try {
-        const result = spawnSync('node', [triageScriptPath], {
-          cwd: targetDir,
-          encoding: 'utf-8',
-        });
-        
-        if (result.status === 0 && result.stdout) {
-          triageResult = JSON.parse(result.stdout.trim());
-          detectedType = mapProjectType(triageResult.project?.primary);
-          detectedTech = mapTechStack(triageResult);
-        }
-        
-        s.stop('Project analyzed.');
-      } catch (err) {
-        s.stop('Auto-detection unavailable.');
-        p.log.warn('Could not run project triage. Proceeding with manual setup.');
-      }
-    } else {
-      p.log.info('Project triage not available yet. Using manual setup.');
-    }
+			let useDetected = false;
+			if (triageResult && hasConfidentDetection(detectedType, detectedTech)) {
+				if (!globalOpts.json && !globalOpts.quiet) {
+					p.note(
+						formatDetectionResults(detectedType!, detectedTech, triageResult),
+						'Auto-Detection Results'
+					);
+					const confirm = await p.confirm({
+						message: 'Use these detected values?',
+						initialValue: true,
+					});
+					if (p.isCancel(confirm)) process.exit(ExitCode.CANCELLED);
+					useDetected = confirm;
+				}
+			} else if (triageResult && (detectedType || detectedTech.length > 0)) {
+				if (!globalOpts.json && !globalOpts.quiet) {
+					p.note(
+						formatDetectionResults(detectedType, detectedTech, triageResult),
+						'Partial Detection (used as defaults)'
+					);
+				}
+			}
 
-    let detectedPackageManager = 'npm/pnpm';
-	if (triageResult && triageResult.tooling?.node?.packageManager) {
-		detectedPackageManager = triageResult.tooling.node.packageManager;
-	}
+			if (useDetected) {
+				projectConfig = {
+					projectType: detectedType! as ProjectType,
+					techStack: detectedTech,
+					packageManager: detectedPackageManager,
+				};
+			} else {
+				// Interactive prompts
+				const projectTypePrompt = p.select({
+					message: 'What type of WordPress project is this?',
+					options: [
+						{ value: 'plugin', label: 'Plugin' },
+						{ value: 'theme', label: 'Theme' },
+						{ value: 'block-theme', label: 'Block Theme' },
+						{ value: 'site', label: 'Full Site / Multisite' },
+						{ value: 'blocks', label: 'Gutenberg Blocks' },
+						{ value: 'other', label: 'Other / Mixed' },
+						{ value: 'unsure', label: "I'm not sure" },
+					],
+					initialValue: detectedType || undefined,
+				});
 
-    let useDetectedValues = false;
+				const techStackPrompt = p.multiselect({
+					message: 'Select technologies (or skip if unsure):',
+					options: [
+						{
+							value: 'gutenberg',
+							label: 'Gutenberg Blocks',
+							hint: 'block.json, @wordpress/blocks',
+						},
+						{ value: 'interactivity', label: 'Interactivity API', hint: 'data-wp-* directives' },
+						{ value: 'rest-api', label: 'REST API', hint: 'Custom endpoints' },
+						{ value: 'wpcli', label: 'WP-CLI', hint: 'Custom commands' },
+						{ value: 'composer', label: 'Composer', hint: 'PHP dependencies' },
+						{ value: 'npm', label: 'npm/pnpm', hint: 'JS build process' },
+						{ value: 'phpstan', label: 'PHPStan', hint: 'Static analysis' },
+						{ value: 'playground', label: 'WordPress Playground', hint: 'Testing/demo' },
+					],
+					initialValues: detectedTech.length > 0 ? detectedTech : undefined,
+					required: false,
+				});
 
-    if (triageResult && hasConfidentDetection(detectedType, detectedTech)) {
-        p.note(formatDetectionResults(detectedType, detectedTech, triageResult), 'Auto-Detection Results');
-        
-        const confirmDetection = await p.confirm({
-            message: 'Use these detected values?',
-            initialValue: true,
-        });
-        
-        if (p.isCancel(confirmDetection)) {
-            p.cancel('Setup cancelled.');
-            process.exit(0);
-        }
-        
-        useDetectedValues = confirmDetection as boolean;
-    } else if (triageResult) {
-        if (detectedType || detectedTech.length > 0) {
-            p.note(formatDetectionResults(detectedType, detectedTech, triageResult), 'Partial Detection (will be used as defaults)');
-        }
-    }
+				const { projectType, techStack } = await p.group(
+					{ projectType: () => projectTypePrompt, techStack: () => techStackPrompt },
+					{ onCancel: () => process.exit(ExitCode.CANCELLED) }
+				);
 
-    let projectInfo: any;
+				projectConfig = {
+					projectType: (projectType === 'unsure' ? 'other' : projectType) as ProjectType,
+					techStack,
+					packageManager: detectedPackageManager,
+				};
+			}
+		}
 
-    if (useDetectedValues) {
-        projectInfo = {
-            projectType: detectedType,
-            techStack: detectedTech,
-        };
-        p.log.success('Using auto-detected configuration.');
-    } else {
-        projectInfo = await p.group(
-            {
-                projectType: () =>
-                    p.select({
-                        message: 'What type of WordPress project is this?',
-                        options: [
-                            { value: 'plugin', label: 'Plugin' },
-                            { value: 'theme', label: 'Theme' },
-                            { value: 'block-theme', label: 'Block Theme' },
-                            { value: 'site', label: 'Full Site / Multisite' },
-                            { value: 'blocks', label: 'Gutenberg Blocks' },
-                            { value: 'other', label: 'Other / Mixed' },
-                            { value: 'unsure', label: "I'm not sure" },
-                        ],
-                        initialValue: detectedType || undefined,
-                    }),
-                techStack: () =>
-                    p.multiselect({
-                        message: 'Select technologies (or skip if unsure):',
-                        options: [
-                            { value: 'gutenberg', label: 'Gutenberg Blocks', hint: 'block.json, @wordpress/blocks' },
-                            { value: 'interactivity', label: 'Interactivity API', hint: 'data-wp-* directives' },
-                            { value: 'rest-api', label: 'REST API', hint: 'Custom endpoints' },
-                            { value: 'wpcli', label: 'WP-CLI', hint: 'Custom commands' },
-                            { value: 'composer', label: 'Composer', hint: 'PHP dependencies' },
-                            { value: 'npm', label: 'npm/pnpm', hint: 'JS build process' },
-                            { value: 'phpstan', label: 'PHPStan', hint: 'Static analysis' },
-                            { value: 'playground', label: 'WordPress Playground', hint: 'Testing/demo' },
-                        ],
-                        initialValues: detectedTech.length > 0 ? detectedTech : undefined,
-                        required: false,
-                    }),
-            },
-            {
-                onCancel: () => {
-                    p.cancel('Setup cancelled.');
-                    process.exit(0);
-                },
-            }
-        );
+		// Configure AGENTS.md
+		const configureResult = await configureAgentsMdApi({
+			targetDir,
+			platform,
+			config: projectConfig,
+			dryRun: globalOpts.dryRun,
+		});
 
-        if (projectInfo.projectType === 'unsure') {
-            projectInfo.projectType = 'other';
-            p.log.info('Using "other" as project type. You can adjust AGENTS.md later.');
-        }
-    }
+		if (!configureResult.success) {
+			process.exit(OutputFormatter.getExitCode(configureResult));
+		}
 
-    const customizeAgents = await p.confirm({
-        message: 'Customize AGENTS.md with project details?',
-        initialValue: true,
-    });
+		// Success output
+		if (globalOpts.json || globalOpts.quiet) {
+			let modified: string[] = [];
+			let skipped: string[] = [];
+			if (isRegularResult(configureResult)) {
+				modified = configureResult.data.modified;
+				skipped = configureResult.data.skipped;
+			} else if (isDryRunResult(configureResult)) {
+				// Dry-run
+				modified = configureResult.data.summary.modified;
+				skipped = configureResult.data.summary.skipped;
+			}
+			const result = formatter.success({
+				targetDir,
+				platform,
+				config: projectConfig,
+				modified,
+				skipped,
+			});
+			process.exit(OutputFormatter.getExitCode(result));
+		}
 
-    if (p.isCancel(customizeAgents)) {
-        p.cancel('Setup cancelled.');
-        process.exit(0);
-    }
+		// Human output
+		console.log('✓ Setup complete');
+		console.log(`  Project: ${projectConfig.projectType}`);
+		console.log(`  Tech stack: ${projectConfig.techStack.join(', ') || 'none'}`);
+		console.log(`  Package manager: ${projectConfig.packageManager}`);
+		console.log('\nNext steps:');
+		console.log(`  1. Review ${path.join(targetDir, 'AGENTS.md')}`);
+		console.log(`  2. Customize ${path.join(targetDir, platformFolder, 'prompts/')}`);
+		console.log(
+			`  3. Run triage: node ${path.join(targetDir, platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs')}`
+		);
 
-    if (customizeAgents) {
-        try {
-            let agentsContent = fs.readFileSync(agentsPath, 'utf-8');
-            
-            agentsContent = agentsContent.replace(
-                /\*\*Tooling\*\*: .*/,
-                `**Tooling**: ${projectInfo.techStack.includes('composer') ? 'Composer for PHP' : ''}${projectInfo.techStack.includes('npm') ? `, ${detectedPackageManager} for JS` : ''}.`
-            );
-
-            fs.writeFileSync(agentsPath, agentsContent, 'utf-8');
-            p.log.success('Updated AGENTS.md');
-        } catch (err: any) {
-            p.log.warn(`Could not update AGENTS.md: ${err.message}`);
-        }
-    }
-    
-    // Workflow instructions
-    if (fs.existsSync(platformInstructionsPath)) {
-        const customizeWorkflow = await p.confirm({
-            message: 'Open workflow instructions for manual editing?',
-            initialValue: false,
-        });
-
-        if (!p.isCancel(customizeWorkflow) && customizeWorkflow) {
-            p.note(
-                `Edit: ${platformInstructionsPath}\n\nAdd your project-specific:\n- Coding standards\n- Git workflow\n- Testing procedures\n- Deployment steps`,
-                'Workflow Instructions'
-            );
-        }
-    }
-
-    const promptsFolder = path.join(targetDir, platformFolder, 'prompts');
-    p.note(
-        `✓ Kit installed and configured\n\n` +
-        `Next steps:\n` +
-        `1. Review ${agentsPath}\n` +
-        `2. Customize ${promptsFolder}/ for your domain\n` +
-        `3. Test with: ${projectInfo.projectType === 'plugin' ? '"Create a new settings page"' : '"Generate a block variation"'}\n` +
-        `4. Adjust skills loading in AGENTS.md as needed`,
-        'Setup Complete'
-    );
-
-    p.outro('Your WordPress project is now AI-ready!');
-  });
+		process.exit(0);
+	});

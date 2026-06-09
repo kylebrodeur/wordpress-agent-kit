@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Get the root directory of the package (where package.json lives)
 // When running from src (ts-node), it's ../

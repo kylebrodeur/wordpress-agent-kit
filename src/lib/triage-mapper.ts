@@ -16,10 +16,10 @@ export function mapProjectType(primary: string): string | null {
 		'wp-theme': 'theme',
 		'wp-site': 'site',
 		'wp-core': 'other',
-		'gutenberg': 'blocks',
-		'unknown': null,
+		gutenberg: 'blocks',
+		unknown: null,
 	};
-	
+
 	return typeMap[primary] || null;
 }
 
@@ -31,42 +31,42 @@ export function mapProjectType(primary: string): string | null {
 export function mapTechStack(triageResult: any): string[] {
 	const techStack: string[] = [];
 	const { signals, tooling } = triageResult;
-	
+
 	// Map signals
 	if (signals.blockJsonFiles && signals.blockJsonFiles.length > 0) {
 		techStack.push('gutenberg');
 	}
-	
+
 	if (signals.usesInteractivityApi) {
 		techStack.push('interactivity');
 	}
-	
+
 	if (signals.usesWpCli) {
 		techStack.push('wpcli');
 	}
-	
+
 	if (signals.usesRestApi) {
 		techStack.push('rest-api');
 	}
-	
+
 	// Map tooling
 	if (tooling.php?.hasComposerJson) {
 		techStack.push('composer');
 	}
-	
+
 	if (tooling.php?.hasPhpStan) {
 		techStack.push('phpstan');
 	}
-	
+
 	if (tooling.node?.hasPackageJson) {
 		techStack.push('npm');
 	}
-	
+
 	// Check for playground blueprint
 	if (signals.hasPlaygroundBlueprint) {
 		techStack.push('playground');
 	}
-	
+
 	return techStack;
 }
 
@@ -76,7 +76,10 @@ export function mapTechStack(triageResult: any): string[] {
  * @param {string[]} detectedTech - Detected tech stack
  * @returns {boolean} - True if confident enough
  */
-export function hasConfidentDetection(detectedType: string | null, detectedTech: string[]): boolean {
+export function hasConfidentDetection(
+	detectedType: string | null,
+	_detectedTech: string[]
+): boolean {
 	return detectedType !== null && detectedType !== 'other';
 }
 
@@ -87,29 +90,33 @@ export function hasConfidentDetection(detectedType: string | null, detectedTech:
  * @param {object} triageResult - Full triage result for additional notes
  * @returns {string} - Formatted string for display
  */
-export function formatDetectionResults(detectedType: string | null, detectedTech: string[], triageResult: any): string {
+export function formatDetectionResults(
+	detectedType: string | null,
+	detectedTech: string[],
+	_triageResult: any
+): string {
 	const typeLabels: Record<string, string> = {
-		'plugin': 'WordPress Plugin',
-		'theme': 'WordPress Theme',
+		plugin: 'WordPress Plugin',
+		theme: 'WordPress Theme',
 		'block-theme': 'Block Theme',
-		'site': 'Full Site / Multisite',
-		'blocks': 'Gutenberg Blocks',
-		'other': 'Other / Mixed',
+		site: 'Full Site / Multisite',
+		blocks: 'Gutenberg Blocks',
+		other: 'Other / Mixed',
 	};
-	
+
 	const techLabels: Record<string, string> = {
-        'gutenberg': 'Blocks',
-        'interactivity': 'Interactivity API',
-        'wpcli': 'WP-CLI',
-        'rest-api': 'REST API',
-        'composer': 'Composer',
-        'phpstan': 'PHPStan',
-        'npm': 'npm/package.json',
-        'playground': 'Playground',
-    };
+		gutenberg: 'Blocks',
+		interactivity: 'Interactivity API',
+		wpcli: 'WP-CLI',
+		'rest-api': 'REST API',
+		composer: 'Composer',
+		phpstan: 'PHPStan',
+		npm: 'npm/package.json',
+		playground: 'Playground',
+	};
 
-    const typeLabel = detectedType ? typeLabels[detectedType] : 'Unknown';
-    const techList = detectedTech.map(t => techLabels[t] || t).join(', ');
+	const typeLabel = detectedType ? typeLabels[detectedType] : 'Unknown';
+	const techList = detectedTech.map((t) => techLabels[t] || t).join(', ');
 
-    return `Project Type: ${typeLabel}\nTech Stack: ${techList}`;
+	return `Project Type: ${typeLabel}\nTech Stack: ${techList}`;
 }
