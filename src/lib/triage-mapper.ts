@@ -2,6 +2,36 @@
  * Maps triage detection results to setup configuration
  */
 
+export interface TriageSignals {
+	blockJsonFiles: string[];
+	usesInteractivityApi: boolean;
+	usesWpCli: boolean;
+	usesRestApi: boolean;
+	hasPlaygroundBlueprint: boolean;
+}
+
+export interface TriageTooling {
+	php?: {
+		hasComposerJson: boolean;
+		hasPhpStan: boolean;
+	};
+	node?: {
+		hasPackageJson: boolean;
+		packageManager?: string;
+	};
+}
+
+export interface TriageProject {
+	primary: string;
+	confidence: number;
+}
+
+export interface TriageResult {
+	project: TriageProject | null;
+	signals: TriageSignals;
+	tooling: TriageTooling;
+}
+
 /**
  * Maps project.primary to setup's project type options
  * @param {string} primary - The primary project type from triage
@@ -25,10 +55,10 @@ export function mapProjectType(primary: string): string | null {
 
 /**
  * Maps triage signals and tooling to tech stack array
- * @param {object} triageResult - Full triage result object
+ * @param {TriageResult} triageResult - Full triage result object
  * @returns {string[]} - Array of tech stack values
  */
-export function mapTechStack(triageResult: any): string[] {
+export function mapTechStack(triageResult: TriageResult): string[] {
 	const techStack: string[] = [];
 	const { signals, tooling } = triageResult;
 
@@ -73,13 +103,9 @@ export function mapTechStack(triageResult: any): string[] {
 /**
  * Checks if detection has enough confidence to skip questions
  * @param {string|null} detectedType - Detected project type
- * @param {string[]} detectedTech - Detected tech stack
  * @returns {boolean} - True if confident enough
  */
-export function hasConfidentDetection(
-	detectedType: string | null,
-	_detectedTech: string[]
-): boolean {
+export function hasConfidentDetection(detectedType: string | null): boolean {
 	return detectedType !== null && detectedType !== 'other';
 }
 
@@ -87,13 +113,11 @@ export function hasConfidentDetection(
  * Formats detection results for display
  * @param {string|null} detectedType - Detected project type
  * @param {string[]} detectedTech - Detected tech stack
- * @param {object} triageResult - Full triage result for additional notes
  * @returns {string} - Formatted string for display
  */
 export function formatDetectionResults(
 	detectedType: string | null,
-	detectedTech: string[],
-	_triageResult: any
+	detectedTech: string[]
 ): string {
 	const typeLabels: Record<string, string> = {
 		plugin: 'WordPress Plugin',

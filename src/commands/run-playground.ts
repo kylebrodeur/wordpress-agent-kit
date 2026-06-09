@@ -68,10 +68,11 @@ export const runPlaygroundCommand = new Command('playground')
 				const successResult = formatter.success({ port: Number(port), status: 'completed' });
 				process.exit(OutputFormatter.getExitCode(successResult));
 			}
-		} catch (error: any) {
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			const errorResult = formatter.fail({
 				code: 'PLAYGROUND_ERROR',
-				message: error.message,
+				message: errorMessage,
 				exitCode: ExitCode.ERROR,
 			});
 			process.exit(OutputFormatter.getExitCode(errorResult));

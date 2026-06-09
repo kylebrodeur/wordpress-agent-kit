@@ -4,7 +4,6 @@ import {
 	type CliResult,
 	type DryRunResult,
 	type InstallOptions,
-	type InstallResult,
 	installKitApi,
 } from '../lib/api.js';
 import { OutputFormatter, createFormatter } from '../utils/output.js';
@@ -19,19 +18,6 @@ function isRegularResult<T>(
 	result: CliResult<T | DryRunResult<T>>
 ): result is CliResult<T> & { success: true; data: T } {
 	return result.success && !('wouldExecute' in (result.data || {}));
-}
-
-/**
- * Extracts the actual data from a result, handling both regular and dry-run results.
- */
-function getResultData<T>(
-	result: CliResult<T | DryRunResult<T>>
-): (T | DryRunResult<T>) | undefined {
-	if (!result.success || !result.data) return undefined;
-	if (isDryRunResult(result)) {
-		return result.data.summary;
-	}
-	return result.data;
 }
 
 /**
@@ -59,7 +45,6 @@ export const installCommand = new Command('install')
 			process.exit(OutputFormatter.getExitCode(result));
 		}
 
-		const _formatter = createFormatter(globalOpts, 'install', '0.0.0');
 		const targetDir = path.resolve(dir);
 
 		const installOptions: InstallOptions = {

@@ -5,17 +5,15 @@ import * as p from '@clack/prompts';
 import { Command } from 'commander';
 import {
 	type CliResult,
-	type ConfigureResult,
 	type DryRunResult,
 	type Platform,
 	type ProjectConfig,
 	configureAgentsMdApi,
 	installKitApi,
-	runTriageApi,
-	syncSkillsApi,
 } from '../lib/api.js';
 import { PLATFORM_FOLDERS } from '../lib/installer.js';
 import {
+	type TriageResult as TriageResultType,
 	formatDetectionResults,
 	hasConfidentDetection,
 	mapProjectType,
@@ -42,16 +40,6 @@ function isRegularResult<T>(
 	result: CliResult<T | DryRunResult<T>>
 ): result is CliResult<T> & { success: true; data: T } {
 	return result.success && !('wouldExecute' in (result.data || {}));
-}
-
-function getResultData<T>(
-	result: CliResult<T | DryRunResult<T>>
-): (T | DryRunResult<T>) | undefined {
-	if (!result.success || !result.data) return undefined;
-	if (isDryRunResult(result)) {
-		return result.data.summary;
-	}
-	return result.data;
 }
 
 /**
@@ -151,7 +139,7 @@ export const setupCommand = new Command('setup')
 		}
 
 		// Run project triage
-		let triageResult: any = null;
+		let triageResult: TriageResultType | null = null;
 		let detectedType: string | null = null;
 		let detectedTech: string[] = [];
 		let detectedPackageManager = 'npm/pnpm';
@@ -177,8 +165,8 @@ export const setupCommand = new Command('setup')
 			});
 
 			if (result.status === 0 && result.stdout) {
-				triageResult = JSON.parse(result.stdout.trim());
-				detectedType = mapProjectType(triageResult.project?.primary);
+				triageResult = JSON.parse(result.stdout.trim()) as TriageResultType;
+				detectedType = mapProjectType(triageResult.project?.primary ?? '');
 				detectedTech = mapTechStack(triageResult);
 				if (triageResult.tooling?.node?.packageManager) {
 					detectedPackageManager = triageResult.tooling.node.packageManager;
@@ -243,12 +231,9 @@ export const setupCommand = new Command('setup')
 			}
 
 			let useDetected = false;
-			if (triageResult && hasConfidentDetection(detectedType, detectedTech)) {
+			if (triageResult && hasConfidentDetection(detectedType)) {
 				if (!globalOpts.json && !globalOpts.quiet) {
-					p.note(
-						formatDetectionResults(detectedType!, detectedTech, triageResult),
-						'Auto-Detection Results'
-					);
+					p.note(formatDetectionResults(detectedType, detectedTech), 'Auto-Detection Results');
 					const confirm = await p.confirm({
 						message: 'Use these detected values?',
 						initialValue: true,
@@ -259,7 +244,7 @@ export const setupCommand = new Command('setup')
 			} else if (triageResult && (detectedType || detectedTech.length > 0)) {
 				if (!globalOpts.json && !globalOpts.quiet) {
 					p.note(
-						formatDetectionResults(detectedType, detectedTech, triageResult),
+						formatDetectionResults(detectedType, detectedTech),
 						'Partial Detection (used as defaults)'
 					);
 				}
@@ -267,7 +252,7 @@ export const setupCommand = new Command('setup')
 
 			if (useDetected) {
 				projectConfig = {
-					projectType: detectedType! as ProjectType,
+					projectType: detectedType as ProjectType,
 					techStack: detectedTech,
 					packageManager: detectedPackageManager,
 				};

@@ -63,9 +63,10 @@ export async function withExitCode<T>(
 ): Promise<T> {
 	try {
 		return await operation();
-	} catch (error: any) {
-		const exitCode = error.exitCode ?? mapErrnoToExitCode(error.code);
-		const enhancedError = Object.assign(error, { exitCode });
+	} catch (error: unknown) {
+		const err = error as Error & { code?: string; exitCode?: ExitCode };
+		const exitCode = err.exitCode ?? mapErrnoToExitCode(err.code);
+		const enhancedError = Object.assign(err, { exitCode });
 		if (onError) {
 			onError(enhancedError);
 		}

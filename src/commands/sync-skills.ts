@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { type CliResult, type DryRunResult, type SyncResult, syncSkillsApi } from '../lib/api.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { type CliResult, type DryRunResult, syncSkillsApi } from '../lib/api.js';
+import { OutputFormatter } from '../utils/output.js';
 
 function isDryRunResult<T>(
 	result: CliResult<T | DryRunResult<T>>
@@ -14,16 +14,6 @@ function isRegularResult<T>(
 	return result.success && !('wouldExecute' in (result.data || {}));
 }
 
-function getResultData<T>(
-	result: CliResult<T | DryRunResult<T>>
-): (T | DryRunResult<T>) | undefined {
-	if (!result.success || !result.data) return undefined;
-	if (isDryRunResult(result)) {
-		return result.data.summary;
-	}
-	return result.data;
-}
-
 /**
  * Command to sync skills from the official WordPress agent-skills repository.
  * Supports --json, --ndjson, --dry-run flags.
@@ -35,7 +25,6 @@ export const syncSkillsCommand = new Command('sync-skills')
 	.action(async (refArg, options, command) => {
 		const globalOpts = command.parent?.opts() || {};
 		const ref = options.ref || refArg;
-		const _formatter = createFormatter(globalOpts, 'sync-skills', '0.0.0');
 
 		const result = await syncSkillsApi({
 			targetDir: process.cwd(),

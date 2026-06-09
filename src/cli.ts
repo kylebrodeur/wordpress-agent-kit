@@ -7,7 +7,7 @@ import { setupCommand } from './commands/setup.js';
 import { syncSkillsCommand } from './commands/sync-skills.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { ExitCode } from './utils/exit-codes.js';
-import { type OutputFormat, createFormatter } from './utils/output.js';
+import { createFormatter } from './utils/output.js';
 import { OutputFormatter } from './utils/output.js';
 
 const require = createRequire(import.meta.url);
@@ -72,27 +72,28 @@ For more info: https://github.com/kylebrodeur/wordpress-agent-kit
 
 try {
 	program.parse(process.argv);
-} catch (error: any) {
+} catch (error: unknown) {
 	// Handle errors from commands that use process.exit
-	if (error.exitCode !== undefined) {
-		process.exit(error.exitCode);
+	const err = error as { exitCode?: number };
+	if (err.exitCode !== undefined) {
+		process.exit(err.exitCode);
 	}
 	// Fallback for unexpected errors
 	const formatter = createFormatter({ json: true }, 'wp-agent-kit', version);
 	const result = formatter.fail({
 		code: 'UNEXPECTED_ERROR',
-		message: error.message || 'Unknown error',
+		message: error instanceof Error ? error.message : 'Unknown error',
 		exitCode: ExitCode.ERROR,
 	});
 	process.exit(OutputFormatter.getExitCode(result));
 }
 
 // Handle unhandled rejections
-process.on('unhandledRejection', (reason: any) => {
+process.on('unhandledRejection', (reason: unknown) => {
 	const formatter = createFormatter({ json: true }, 'wp-agent-kit', version);
 	const result = formatter.fail({
 		code: 'UNHANDLED_REJECTION',
-		message: reason?.message || String(reason),
+		message: reason instanceof Error ? reason.message : String(reason),
 		exitCode: ExitCode.ERROR,
 	});
 	process.exit(OutputFormatter.getExitCode(result));

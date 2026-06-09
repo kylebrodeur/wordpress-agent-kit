@@ -2,13 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import {
-	type CliResult,
-	type DryRunResult,
-	type InstallResult,
-	type Platform,
-	installKitApi,
-} from '../lib/api.js';
+import { type CliResult, type DryRunResult, type Platform, installKitApi } from '../lib/api.js';
 import { PLATFORM_FOLDERS } from '../lib/installer.js';
 import { ExitCode } from '../utils/exit-codes.js';
 import { OutputFormatter, createFormatter } from '../utils/output.js';
@@ -29,16 +23,6 @@ function isRegularResult<T>(
 	return result.success && !('wouldExecute' in (result.data || {}));
 }
 
-function getResultData<T>(
-	result: CliResult<T | DryRunResult<T>>
-): (T | DryRunResult<T>) | undefined {
-	if (!result.success || !result.data) return undefined;
-	if (isDryRunResult(result)) {
-		return result.data.summary;
-	}
-	return result.data;
-}
-
 /** Current package version */
 const CURRENT_VERSION = (() => {
 	try {
@@ -50,7 +34,7 @@ const CURRENT_VERSION = (() => {
 })();
 
 /** Version detection from installed kit */
-function detectInstalledVersion(targetDir: string, _platform: Platform): string | null {
+function detectInstalledVersion(targetDir: string): string | null {
 	// Check AGENTS.md for version marker
 	const agentsPath = path.join(targetDir, 'AGENTS.md');
 	if (fs.existsSync(agentsPath)) {
@@ -66,7 +50,7 @@ function detectInstalledVersion(targetDir: string, _platform: Platform): string 
 			if (pkg.devDependencies?.['wordpress-agent-kit']) {
 				return pkg.devDependencies['wordpress-agent-kit'].replace(/^[\^~]/, '');
 			}
-		} catch (_) {
+		} catch {
 			// ignore
 		}
 	}
@@ -133,10 +117,7 @@ export const upgradeCommand = new Command('upgrade')
 		// Detect or override version
 		let currentVersion = options.fromVersion;
 		if (!currentVersion) {
-			for (const platform of platformsToCheck) {
-				currentVersion = detectInstalledVersion(targetDir, platform);
-				if (currentVersion) break;
-			}
+			currentVersion = detectInstalledVersion(targetDir);
 		}
 		currentVersion = currentVersion || 'unknown';
 

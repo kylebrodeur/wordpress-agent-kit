@@ -6,13 +6,8 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ExitCode, type ExitCode as ExitCodeType, withExitCode } from '../utils/exit-codes.js';
-import {
-	type CliResult,
-	type DryRunResult,
-	type OutputFormat,
-	OutputFormatter,
-} from '../utils/output.js';
+import { ExitCode, withExitCode } from '../utils/exit-codes.js';
+import { type CliResult, type DryRunResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 import { type Platform, installKit } from './installer.js';
 
@@ -116,7 +111,7 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 			return dryRunInstall(targetDir, platform, force);
 		}
 
-		const _result = await withExitCode(async () => {
+		await withExitCode(async () => {
 			await installKit(targetDir, platform);
 			return { success: true };
 		});
@@ -132,11 +127,12 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 			errors: [],
 			durationMs,
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as Error & { code?: string; exitCode?: ExitCode };
 		return formatter.fail({
-			code: error.code || 'INSTALL_FAILED',
-			message: error.message || 'Installation failed',
-			exitCode: error.exitCode ?? ExitCode.ERROR,
+			code: err.code || 'INSTALL_FAILED',
+			message: err.message || 'Installation failed',
+			exitCode: err.exitCode ?? ExitCode.ERROR,
 			details: { platform: options.platform, targetDir: options.targetDir },
 		});
 	}
@@ -357,11 +353,12 @@ export async function syncSkillsApi(options: SyncOptions = {}): Promise<ApiResul
 			durationMs: Date.now() - startTime,
 			method: result.method,
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as Error & { code?: string; exitCode?: ExitCode };
 		return formatter.fail({
-			code: error.code || 'SYNC_FAILED',
-			message: error.message || 'Sync failed',
-			exitCode: error.exitCode ?? ExitCode.ERROR,
+			code: err.code || 'SYNC_FAILED',
+			message: err.message || 'Sync failed',
+			exitCode: err.exitCode ?? ExitCode.ERROR,
 			details: { ref, targetDir },
 		});
 	}
@@ -469,10 +466,11 @@ export async function runTriageApi(options: TriageOptions): Promise<CliResult<Tr
 
 		const triageResult = JSON.parse(result.stdout.trim());
 		return formatter.success(triageResult as TriageResult);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as Error;
 		return formatter.fail({
 			code: 'TRIAGE_ERROR',
-			message: error.message || 'Triage failed',
+			message: err.message || 'Triage failed',
 			exitCode: ExitCode.ERROR,
 		});
 	}
@@ -563,10 +561,11 @@ export async function configureAgentsMdApi(
 			skipped,
 			dryRun: false,
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const err = error as Error;
 		return formatter.fail({
 			code: 'CONFIGURE_FAILED',
-			message: error.message || 'Configuration failed',
+			message: err.message || 'Configuration failed',
 			exitCode: ExitCode.ERROR,
 		});
 	}
