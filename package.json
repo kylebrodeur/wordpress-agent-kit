@@ -1,6 +1,6 @@
 {
   "name": "wordpress-agent-kit",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "WordPress-focused AGENTS.md + Agent Skills starter kit for AI coding agents.",
   "license": "GPL-2.0-or-later",
   "author": "Kyle Brodeur <kyle@brodeur.me> (https://brodeur.me)",
@@ -13,13 +13,22 @@
     "agents-md",
     "agent-skills",
     "ai-coding",
-    "copilot"
+    "copilot",
+    "pi-package"
   ],
   "engines": {
     "node": ">=20.18"
   },
   "bin": {
     "wp-agent-kit": "dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/cli.js",
+    "./api": "./dist/lib/api.js"
+  },
+  "pi": {
+    "extensions": ["./extensions/wp-agent-kit"],
+    "skills": ["./.github/skills"]
   },
   "scripts": {
     "dev": "tsx src/cli.ts",
@@ -44,6 +53,10 @@
     "@clack/prompts": "^0.8.2",
     "commander": "^13.0.0"
   },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@eslint/js": "^9.17.0",
@@ -57,7 +70,8 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",
     "vitest": "^2.1.8",
-    "@earendil-works/pi-coding-agent": "^0.78.1"
+    "@earendil-works/pi-coding-agent": "^0.78.1",
+    "typebox": "*"
   },
   "pnpm": {
     "overrides": {

@@ -6,7 +6,7 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+		"include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts", "extensions/**/*.ts"],
 		"ignoreUnknown": true
 	},
 	"organizeImports": {

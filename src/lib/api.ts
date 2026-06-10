@@ -10,6 +10,7 @@ import { ExitCode, withExitCode } from '../utils/exit-codes.js';
 import { type CliResult, type DryRunResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 import { type Platform, installKit } from './installer.js';
+import { computeChanges, isKitInstalled } from './updater.js';
 
 /** Result of install operation */
 export interface InstallResult {
@@ -19,6 +20,9 @@ export interface InstallResult {
 	filesSkipped: string[];
 	errors: string[];
 	durationMs: number;
+	isUpdate: boolean;
+	backupDir: string | null;
+	conflicts?: string[];
 }
 
 /** Options for installKit */
@@ -27,6 +31,10 @@ export interface InstallOptions {
 	platform: Platform;
 	force?: boolean;
 	dryRun?: boolean;
+	/** Use safe update logic instead of full nuke-and-replace (default: true) */
+	safe?: boolean;
+	/** Create backup before overwriting files (default: true) */
+	backup?: boolean;
 }
 
 /** Result of sync-skills operation */
@@ -105,14 +113,21 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 	const formatter = new OutputFormatter('json', 'install', '0.0.0');
 
 	try {
-		const { targetDir, platform, force = false, dryRun = false } = options;
+		const {
+			targetDir,
+			platform,
+			force = false,
+			dryRun = false,
+			safe = true,
+			backup = true,
+		} = options;
 
 		if (dryRun) {
-			return dryRunInstall(targetDir, platform, force);
+			return dryRunInstall(targetDir, platform, { force, safe, backup });
 		}
 
 		await withExitCode(async () => {
-			await installKit(targetDir, platform);
+			installKit(targetDir, platform, { force, safe, backup });
 			return { success: true };
 		});
 
@@ -126,6 +141,8 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 			filesSkipped: [],
 			errors: [],
 			durationMs,
+			isUpdate: isKitInstalled(targetDir, platform),
+			backupDir: null,
 		});
 	} catch (error: unknown) {
 		const err = error as Error & { code?: string; exitCode?: ExitCode };
@@ -144,9 +161,64 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 function dryRunInstall(
 	targetDir: string,
 	platform: Platform,
-	force: boolean
+	options: { force?: boolean; safe?: boolean; backup?: boolean }
 ): CliResult<DryRunResult<InstallResult>> {
+	const { force = false, safe = true } = options;
 	const platformFolder = getPlatformFolder(platform);
+	const formatter = new OutputFormatter('json', 'install', '0.0.0');
+
+	// Use change-computation for safe updates on existing installations
+	if (safe && isKitInstalled(targetDir, platform)) {
+		const changes = computeChanges(targetDir, platform, force);
+		const actions: DryRunResult['actions'] = changes.map((c) => {
+			const target = path.join(targetDir, platformFolder, c.relativePath);
+			return {
+				type: c.action === 'created' ? 'create' : c.action === 'updated' ? 'update' : 'skip',
+				target,
+				description: `${c.action}: ${c.relativePath}${c.reason ? ` (${c.reason})` : ''}`,
+			};
+		});
+
+		// AGENTS.md check
+		const targetAgents = path.join(targetDir, 'AGENTS.md');
+		if (!fs.existsSync(targetAgents)) {
+			actions.push({
+				type: 'create',
+				target: targetAgents,
+				description: 'Create AGENTS.md from template',
+			});
+		} else {
+			actions.push({
+				type: 'skip',
+				target: targetAgents,
+				description: 'AGENTS.md exists (preserved)',
+			});
+		}
+
+		return formatter.success({
+			wouldExecute: true,
+			actions,
+			summary: {
+				targetDir,
+				platform,
+				filesCreated: changes
+					.filter((c) => c.action === 'created')
+					.map((c) => path.join(platformFolder, c.relativePath)),
+				filesSkipped: changes
+					.filter((c) => c.action === 'skipped' || c.action === 'conflict')
+					.map((c) => `${path.join(platformFolder, c.relativePath)} (${c.reason})`),
+				errors: [],
+				durationMs: 0,
+				isUpdate: true,
+				backupDir: null,
+				conflicts: changes
+					.filter((c) => c.action === 'conflict')
+					.map((c) => path.join(platformFolder, c.relativePath)),
+			},
+		});
+	}
+
+	// Legacy dry-run for fresh installs
 	const actions: DryRunResult['actions'] = [];
 	const sourceGithub = path.join(PACKAGE_ROOT, '.github');
 	const targetPlatform = path.join(targetDir, platformFolder);
@@ -154,7 +226,6 @@ function dryRunInstall(
 	const targetAgentsTemplate = path.join(targetDir, 'AGENTS.template.md');
 	const targetAgents = path.join(targetDir, 'AGENTS.md');
 
-	// Platform folder
 	if (fs.existsSync(sourceGithub)) {
 		if (fs.existsSync(targetPlatform) && !force) {
 			actions.push({
@@ -172,7 +243,6 @@ function dryRunInstall(
 		}
 	}
 
-	// AGENTS.template.md
 	if (fs.existsSync(templatePath)) {
 		actions.push({
 			type: 'copy',
@@ -182,7 +252,6 @@ function dryRunInstall(
 		});
 	}
 
-	// AGENTS.md
 	if (!fs.existsSync(targetAgents) || force) {
 		if (fs.existsSync(templatePath)) {
 			actions.push({
@@ -200,7 +269,7 @@ function dryRunInstall(
 		});
 	}
 
-	return new OutputFormatter('json', 'install', '0.0.0').success({
+	return formatter.success({
 		wouldExecute: true,
 		actions,
 		summary: {
@@ -210,6 +279,8 @@ function dryRunInstall(
 			filesSkipped: actions.filter((a) => a.type === 'update').map((a) => a.target),
 			errors: [],
 			durationMs: 0,
+			isUpdate: false,
+			backupDir: null,
 		},
 	});
 }
@@ -625,6 +696,8 @@ function getInstalledFiles(targetDir: string, platform: Platform): string[] {
 
 /** Re-export types */
 export type { Platform } from './installer.js';
+export type { FileChange, UpdateOptions, UpdateResult } from './updater.js';
 export type { CliResult, DryRunResult, OutputFormat, ProgressEvent } from '../utils/output.js';
 export { ExitCode } from '../utils/exit-codes.js';
 export { OutputFormatter, createFormatter, parseOutputFormat } from '../utils/output.js';
+export { computeChanges, isKitInstalled, loadManifest, updateKit } from './updater.js';

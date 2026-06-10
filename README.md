@@ -2,190 +2,289 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
-[![Version](https://img.shields.io/badge/version-0.2.2-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
-**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and other LLM coding agents. Includes instructions, specialized WordPress skills, and workflow automation aligned with industry standards.
+**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 13 specialized WordPress agent skills, an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
 
-## Quick Start
+---
 
-### Option 1: CLI (Recommended)
+## Getting Started
 
-#### Interactive Setup Wizard
-```bash
-npx wp-agent-kit setup
-# or
-pnpm dlx wp-agent-kit setup
-```
+Choose your scenario:
 
-#### Non-Interactive (CI/Agent-Friendly)
-```bash
-# Auto-detect project type and tech stack
-pnpm dlx wp-agent-kit setup --auto --json
-
-# Or specify explicitly (for full automation)
-pnpm dlx wp-agent-kit setup --project-type plugin --tech-stack gutenberg,rest-api,composer --platform github --yes --json
-```
-
-#### Install Only (No Configuration)
-```bash
-# For GitHub Copilot / VS Code
-pnpm dlx wp-agent-kit@latest install --platform github
-
-# For Cursor IDE
-pnpm dlx wp-agent-kit@latest install --platform cursor
-
-# For Pi Coding Agent (recommended)
-pnpm dlx wp-agent-kit@latest install --platform pi
-
-# For generic .agent workflows
-pnpm dlx wp-agent-kit@latest install --platform agent
-```
-
-### Option 2: Pre-built Bundles
-
-Download from the [latest release](https://github.com/kylebrodeur/wordpress-agent-kit/releases):
-- `wordpress-agent-kit-github.tar.gz` — GitHub Copilot
-- `wordpress-agent-kit-cursor.tar.gz` — Cursor IDE
-- `wordpress-agent-kit-claude.tar.gz` — Claude
-- `wordpress-agent-kit-agent.tar.gz` — Generic `.agent`
+### Scenario 1: Brand New WordPress Project
 
 ```bash
-cd /path/to/your-wordpress-project
-tar -xzf wordpress-agent-kit-github.tar.gz
+# 1. Install the kit (copies skills, agents, instructions, AGENTS.md template)
+npx wp-agent-kit install /path/to/my-plugin --platform github
+
+# 2. Run auto-setup (detects project type and configures AGENTS.md)
+npx wp-agent-kit setup /path/to/my-plugin --auto
+
+# 3. (Optional) Verify the triage report
+node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
 ```
 
-## Agent-Friendly Features (v0.2.2+)
+**What gets installed:**
+```
+my-plugin/
+├── AGENTS.md                  # Project-specific agent instructions
+├── AGENTS.template.md         # Template reference for future updates
+├── .github/
+│   ├── agents/
+│   │   └── wp-architect.agent.md    # WordPress Architect agent persona
+│   ├── instructions/
+│   │   └── wordpress-workflow.instructions.md
+│   ├── prompts/
+│   └── skills/                      # 13 WordPress skills
+│       ├── wp-project-triage/       # Project detection
+│       ├── wp-plugin-development/   # Plugin architecture
+│       ├── wp-block-development/    # Gutenberg blocks
+│       ├── wp-block-themes/         # Block themes
+│       ├── wp-rest-api/             # REST API
+│       ├── wp-interactivity-api/    # Interactivity API
+│       ├── wp-abilities-api/        # Abilities API
+│       ├── wp-performance/          # Performance profiling
+│       ├── wp-phpstan/              # Static analysis
+│       ├── wp-wpcli-and-ops/        # WP-CLI operations
+│       ├── wp-playground/           # Testing environments
+│       ├── wpds/                    # Design system
+│       └── wordpress-router/        # Repo classification
+└── .wp-agent-kit-manifest.github.json  # Safe-update tracking
+```
 
-### Structured JSON Output (`--json`)
-All commands output machine-readable JSON for programmatic use:
+### Scenario 2: Existing WordPress Project
+
 ```bash
-wp-agent-kit install --platform github --json
-# {"success":true,"data":{"targetDir":"/path","platform":"github","filesCreated":[...],"durationMs":35}}
+# 1. Install kit (preserves your existing AGENTS.md)
+npx wp-agent-kit install /path/to/existing-plugin --platform github
+
+# 2. Run triage to detect your project's type, tech stack, and tooling
+node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
+
+# 3. Configure based on detection (headless)
+npx wp-agent-kit setup /path/to/existing-plugin --auto
+
+# Or specify explicitly
+npx wp-agent-kit setup /path/to/existing-plugin \
+  --project-type plugin \
+  --tech-stack gutenberg,rest-api,wpcli,composer,npm \
+  --package-manager pnpm \
+  --yes
 ```
 
-### Headless/Non-Interactive Mode
+**Key behavior:**
+- Your existing `AGENTS.md` is **never overwritten** — only new sections are added
+- Triage inspects your codebase and returns structured JSON with project kind, signals, and tooling
+- Setup updates only the tooling/configuration sections of AGENTS.md
+
+### Scenario 3: Upgrading an Existing Kit Installation
+
 ```bash
-# Auto-detection
-wp-agent-kit setup --auto --json
+# Check if an update is available
+npx wp-agent-kit upgrade --check-only
 
-# Explicit config (CI/CD ready)
-wp-agent-kit setup --project-type plugin --tech-stack gutenberg,rest-api --platform github --yes --json
+# Preview what would change (dry-run)
+npx wp-agent-kit install --dry-run
+
+# Apply safe update (preserves your modifications)
+npx wp-agent-kit upgrade --force
 ```
 
-### Dry-Run Preview (`--dry-run`)
+**Safe update behavior:**
+- Compares installed files against a manifest of original hashes
+- Files you haven't modified → automatically updated
+- Files you modified → **skipped** (preserved)
+- Use `--force` to overwrite your modifications with upstream changes
+- A backup is created at `.wp-agent-kit-backup-{timestamp}/` before making changes
+
 ```bash
-wp-agent-kit install --platform github --dry-run --json
-wp-agent-kit setup --project-type plugin --dry-run --json
+# Emergency: override all safety and replace everything
+npx wp-agent-kit install --no-safe --force
 ```
 
-### Upgrade Existing Installations
+---
+
+## Quick Reference
+
+### CLI Commands
+
+| Command | Purpose |
+|---------|---------|
+| `install [dir]` | Install kit into a project |
+| `setup [dir]` | Interactive or headless configuration |
+| `sync-skills [ref]` | Pull latest skills from WordPress/agent-skills |
+| `upgrade [dir]` | Check or apply version upgrades |
+| `playground` | Launch local WordPress Playground |
+
+### Platform Flags
+
+| Platform | Flag | Target Directory |
+|----------|------|-----------------|
+| GitHub Copilot / VS Code | `--platform github` | `.github/` |
+| Cursor IDE | `--platform cursor` | `.cursor/` |
+| Claude Code | `--platform claude` | `.claude/` |
+| Pi Coding Agent | `--platform pi` | `.pi/agent/` |
+| Generic .agent | `--platform agent` | `.agent/` |
+
+### Agent-Friendly Flags (All Commands)
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Machine-readable JSON output |
+| `--dry-run` | Preview changes without applying |
+| `--ndjson` | Newline-delimited JSON for streaming |
+| `--quiet` | Suppress non-error output |
+
+---
+
+## Pi Coding Agent Integration
+
+This package is also a Pi extension — install it once and all WordPress skills and tools are available to Pi:
+
 ```bash
-# Check for updates
-wp-agent-kit upgrade --check-only --json
-
-# Apply upgrade
-wp-agent-kit upgrade --force --json
+pi install npm:wordpress-agent-kit
 ```
 
-### Programmatic API
+### Pi Tools (Callable by the Agent)
+
+| Tool | What it does |
+|------|-------------|
+| `wp_triage` | Detect WordPress project type, signals, and tooling |
+| `wp_install_kit` | Install/update kit into a project (safe by default) |
+| `wp_sync_skills` | Sync skills from WordPress/agent-skills upstream |
+| `wp_upgrade` | Check and apply version upgrades |
+
+### Pi Commands (Type `/` in Pi TUI)
+
+| Command | What it does |
+|---------|-------------|
+| `/wp-triage [dir]` | Run project detection, show in status bar |
+| `/wp-install [dir]` | Install kit into current project |
+| `/wp-sync-skills [ref]` | Sync skills from upstream |
+| `/wp-upgrade` | Show installed vs latest version |
+
+---
+
+## Programmatic API
+
+Import directly into scripts, tests, or other tools:
+
 ```typescript
-import { installKitApi, syncSkillsApi, runTriageApi, configureAgentsMdApi } from 'wordpress-agent-kit/api';
+import {
+  installKitApi,         // Install/update kit
+  syncSkillsApi,         // Sync skills from upstream
+  runTriageApi,          // Run project detection
+  configureAgentsMdApi,  // Configure AGENTS.md
+  computeChanges,        // Preview file changes (dry-run)
+  isKitInstalled,        // Check if kit is installed
+  loadManifest,          // Read install manifest
+  updateKit,             // Raw safe update
+  ExitCode,              // Semantic exit codes
+} from 'wordpress-agent-kit/api';
 
-await installKitApi({ targetDir: '/path', platform: 'github', force: true });
-await syncSkillsApi({ ref: 'trunk' });
-const triage = await runTriageApi({ targetDir: '/path' });
-await configureAgentsMdApi({ targetDir: '/path', platform: 'github', config: { projectType: 'plugin', techStack: ['gutenberg'] }});
+// Install with safe update
+const result = await installKitApi({
+  targetDir: '/path/to/my-plugin',
+  platform: 'github',
+  safe: true,     // Use manifest-based diff
+  backup: true,   // Create backup before changes
+  force: false,   // Don't overwrite user mods
+});
+
+// Dry-run preview
+const preview = await installKitApi({
+  targetDir: '/path/to/my-plugin',
+  platform: 'github',
+  dryRun: true,
+});
+// preview.data.actions → [{ type: 'create', target: '...', description: '...' }]
+
+// Detect project type
+const triage = await runTriageApi({ targetDir: '/path/to/project' });
+console.log(triage.data.project.primary); // "plugin"
 ```
 
 ### Semantic Exit Codes
+
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | General error |
 | 2 | Invalid arguments |
-| 3 | Not found (ENOENT) |
+| 3 | Not found |
 | 4 | Permission denied |
-| 5 | Already exists (use --force) |
+| 5 | Already exists |
 | 6 | Git error |
 | 7 | Network error |
 | 8 | Validation failed |
-| 130 | Cancelled (SIGINT) |
+| 130 | Cancelled |
 
-## Platform Comparison
+---
 
-| Platform | Target Dir | Interactive? | Best For |
-|----------|------------|--------------|----------|
-| `pi` | `.pi/agent/skills/` | ❌ | **Pi Coding Agent** |
-| `github` | `.github/skills/` | ❌ | GitHub Copilot, VS Code |
-| `cursor` | `.cursor/skills/` | ❌ | Cursor IDE |
-| `agent` | `.agent/skills/` | ❌ | Generic `.agent` workflows |
-| `claude` | `.claude/skills/` | ✅ | Claude Code (interactive) |
+## Skills Reference
 
-## Commands Reference
+All 13 skills follow the [AgentSkills.io](https://agentskills.io) specification:
 
-| Command | Description |
-|---------|-------------|
-| `install [dir] --platform <p> [--force] [--dry-run] [--json]` | Install kit to target directory |
-| `setup [dir] [--auto] [--project-type] [--tech-stack] [--yes] [--json]` | Interactive or headless setup |
-| `sync-skills [ref] [--dry-run] [--json]` | Sync skills from WordPress/agent-skills |
-| `playground [--port] [--no-auto-mount] [--json]` | Run local WordPress Playground |
-| `upgrade [dir] [--platform] [--force] [--check-only] [--json]` | Upgrade existing installation |
+| Skill | When to Use |
+|-------|------------|
+| `wordpress-router` | Classify a WordPress repo and route to the right workflow |
+| `wp-project-triage` | Run deterministic project detection (type, tooling, versions) |
+| `wp-plugin-development` | Develop WordPress plugins (hooks, settings, security, release) |
+| `wp-block-development` | Develop Gutenberg blocks (block.json, attributes, rendering) |
+| `wp-block-themes` | Develop block themes (theme.json, templates, patterns, variations) |
+| `wp-rest-api` | Build, extend, or debug REST API endpoints/routes |
+| `wp-interactivity-api` | Build Interactive blocks with data-wp-* directives |
+| `wp-abilities-api` | Register and consume WordPress Abilities API |
+| `wp-performance` | Profile and optimize WordPress performance |
+| `wp-phpstan` | Configure and run PHPStan static analysis |
+| `wp-wpcli-and-ops` | WP-CLI commands, automation, multisite operations |
+| `wp-playground` | Test in disposable WordPress Playground instances |
+| `wpds` | Build UIs with the WordPress Design System |
+
+---
 
 ## Development
 
-### Build CLI
 ```bash
-pnpm build
-```
+# Install dependencies
+pnpm install
 
-### Run Tests
-```bash
+# Run in dev mode
+pnpm dev
+
+# Type-check
+pnpm check
+
+# Lint & format
+pnpm lint:check
+pnpm format
+
+# Run tests
 pnpm test:run
+
+# Build for distribution
+pnpm build
+
+# Full pre-publish check (build + lint + test)
+pnpm prepublishOnly
 ```
 
-### Lint & Format
-```bash
-pnpm run lint:check    # Check only
-pnpm run lint          # Auto-fix
-pnpm run format:check  # Check formatting
-pnpm run format        # Auto-format
-```
+---
 
-### Build Release Bundles
-```bash
-pnpm sync:skills
-pnpm build:bundles
-```
+## Documentation
 
-### Pre-Publish (Runs All Checks)
-```bash
-pnpm run prepublishOnly
-```
+- **[CLI_REVIEW.md](CLI_REVIEW.md)** — Initial architecture review and design decisions
+- **[CHANGELOG.md](CHANGELOG.md)** — Version history and release notes
+- **[AGENTS.md](AGENTS.md)** — Agent instructions for this repository
 
-## Customization
-
-**Quick method:** Run the interactive or headless setup.
-
-**Manual method:** Edit files directly:
-1. Edit `AGENTS.md` to match your project's tech stack and conventions.
-2. Run WordPress project triage (via `wp-project-triage` skill) to generate tailored instructions.
-3. Update `.github/instructions/wordpress-workflow.instructions.md` with your workflow.
-4. Keep prompts in `.github/prompts/` accurate for your plugin/theme.
-
-## CI/CD Integration
-
-```yaml
-# GitHub Actions example
-- name: Install WordPress Agent Kit
-  run: pnpm dlx wordpress-agent-kit@latest install --platform github --json
-```
+---
 
 ## Credits
 
-- **[AGENTS.md](https://agentskills.io)** - The agent configuration standard.
-- **[AgentSkills.io](https://agentskills.io)** - The open directory of agent skills.
-- **[WordPress/agent-skills](https://github.com/WordPress/agent-skills)** - Upstream skills repository.
+- **[AgentSkills.io](https://agentskills.io)** — The agent skills specification
+- **[AGENTS.md](https://agentskills.io)** — The agent configuration standard
+- **[WordPress/agent-skills](https://github.com/WordPress/agent-skills)** — Upstream skills repository

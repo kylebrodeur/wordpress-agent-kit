@@ -177,25 +177,54 @@ export const upgradeCommand = new Command('upgrade')
 				platform,
 				force: options.force,
 				dryRun: globalOpts.dryRun,
+				safe: true,
+				backup: !options.force, // Skip backup if forcing
 			});
 			results.push({ platform, ...installResult });
 		}
 
 		const successCount = results.filter((r) => r.success).length;
-		const totalFiles = results.reduce((sum, r) => {
+		const totalCreated = results.reduce((sum, r) => {
 			if (!r.success) return sum;
 			if (isRegularResult(r)) {
-				return sum + (r.data.filesCreated.length || 0);
+				return sum + (r.data.filesCreated?.length || 0);
 			}
 			if (isDryRunResult(r)) {
-				// Dry-run - summary has filesCreated
-				return sum + (r.data.summary.filesCreated.length || 0);
+				return sum + (r.data.summary.filesCreated?.length || 0);
 			}
 			return sum;
 		}, 0);
 
+		const totalSkipped = results.reduce((sum, r) => {
+			if (!r.success) return sum;
+			if (isRegularResult(r)) {
+				return sum + (r.data.filesSkipped?.length || 0);
+			}
+			if (isDryRunResult(r)) {
+				return sum + (r.data.summary.filesSkipped?.length || 0);
+			}
+			return sum;
+		}, 0);
+
+		const allConflicts = results.reduce((acc: string[], r) => {
+			if (!r.success) return acc;
+			if (isRegularResult(r) && r.data.conflicts) {
+				acc.push(...r.data.conflicts);
+			}
+			if (isDryRunResult(r) && r.data.summary.conflicts) {
+				acc.push(...r.data.summary.conflicts);
+			}
+			return acc;
+		}, []);
+
 		console.log(`\n✓ Upgraded ${successCount}/${results.length} platform(s)`);
-		console.log(`  Files updated: ${totalFiles}`);
+		console.log(`  Files updated: ${totalCreated}`);
+		if (totalSkipped > 0) {
+			console.log(`  Files preserved: ${totalSkipped} (user-modified)`);
+		}
+		if (allConflicts.length > 0) {
+			console.log(`  ⚠ Conflicts: ${allConflicts.length} files (re-run with --force to overwrite)`);
+		}
 		console.log(`  Version: ${currentVersion} → ${CURRENT_VERSION}`);
 
 		const failed = results.filter((r) => !r.success);

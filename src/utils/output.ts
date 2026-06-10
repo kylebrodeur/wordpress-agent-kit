@@ -35,7 +35,7 @@ export interface ProgressEvent {
 export interface DryRunResult<T = unknown> {
 	wouldExecute: boolean;
 	actions: Array<{
-		type: 'create' | 'update' | 'delete' | 'copy' | 'mkdir';
+		type: 'create' | 'update' | 'delete' | 'copy' | 'mkdir' | 'skip';
 		source?: string;
 		target: string;
 		description: string;

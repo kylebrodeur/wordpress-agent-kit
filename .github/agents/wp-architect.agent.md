@@ -1,6 +1,7 @@
 ---
 name: WordPress Architect
 description: Expert developer that orchestrates Agent Skills, official Handbooks, and project-specific instructions.
+license: GPL-2.0-or-later
 ---
 
 # Role
