@@ -25,17 +25,16 @@ describe('installKit', () => {
 		consoleLogSpy.mockRestore();
 	});
 
-	it('should log installation message', () => {
+	it('should not crash on fresh install', () => {
 		vi.mocked(fs.existsSync).mockReturnValue(true);
 		vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
 		vi.mocked(fs.cpSync).mockReturnValue(undefined);
 		vi.mocked(fs.copyFileSync).mockReturnValue(undefined);
 
-		installKit(mockTargetDir, 'github', { safe: false });
+		const result: InstallKitResult = installKit(mockTargetDir, 'github', { safe: false });
 
-		expect(consoleLogSpy).toHaveBeenCalledWith(
-			`Installing WordPress Agent Kit (github) into: ${mockTargetDir}`
-		);
+		expect(result.platform).toBe('github');
+		expect(result.targetDir).toBe(mockTargetDir);
 	});
 
 	it('should create target directory if it does not exist', () => {

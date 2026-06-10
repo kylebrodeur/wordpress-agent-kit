@@ -83,7 +83,6 @@ function isKitAlreadyInstalled(targetDir: string, platform: Platform): boolean {
  */
 function fullInstall(targetDir: string, platform: Platform, _force: boolean): InstallKitResult {
 	const platformFolder = PLATFORM_FOLDERS[platform];
-	console.log(`Installing WordPress Agent Kit (${platform}) into: ${targetDir}`);
 
 	if (!fs.existsSync(targetDir)) {
 		fs.mkdirSync(targetDir, { recursive: true });
@@ -162,8 +161,6 @@ function safeUpdateInstall(
 	platform: Platform,
 	options: { force?: boolean; backup?: boolean }
 ): InstallKitResult {
-	console.log(`Updating WordPress Agent Kit (${platform}) in: ${targetDir}`);
-
 	const updateOptions: UpdateOptions = {
 		targetDir,
 		platform,

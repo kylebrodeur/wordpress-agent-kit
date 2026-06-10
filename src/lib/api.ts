@@ -131,7 +131,7 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 			return { success: true };
 		});
 
-		const filesCreated = getInstalledFiles(targetDir, platform);
+		const filesCreated = getInstalledSummary(targetDir, platform);
 		const durationMs = Date.now() - startTime;
 
 		return formatter.success({
@@ -657,41 +657,52 @@ function getPlatformFolder(platform: Platform): string {
 }
 
 /**
- * Get list of files that would be/are installed.
+ * Get summary of installed files grouped by directory.
  */
-function getInstalledFiles(targetDir: string, platform: Platform): string[] {
+function getInstalledSummary(targetDir: string, platform: Platform): string[] {
 	const platformFolder = getPlatformFolder(platform);
-	const files: string[] = [];
+	const summary: string[] = [];
 	const targetPlatform = path.join(targetDir, platformFolder);
 
 	if (fs.existsSync(targetPlatform)) {
-		function walk(dir: string, prefix = ''): void {
-			const entries = fs.readdirSync(dir);
-			for (const entry of entries) {
-				const fullPath = path.join(dir, entry);
-				const relPath = path.join(prefix, entry);
-				const stat = fs.statSync(fullPath);
-				if (stat.isDirectory()) {
-					walk(fullPath, relPath);
-				} else {
-					files.push(path.join(platformFolder, relPath));
+		// Walk top-level entries for clean summary
+		const topEntries = fs.readdirSync(targetPlatform);
+		for (const entry of topEntries) {
+			const fullPath = path.join(targetPlatform, entry);
+			const stat = fs.statSync(fullPath);
+			if (stat.isDirectory()) {
+				let totalFiles = 0;
+				let totalDirs = 0;
+				function countAll(dir: string): void {
+					const items = fs.readdirSync(dir);
+					for (const item of items) {
+						const itemPath = path.join(dir, item);
+						const s = fs.statSync(itemPath);
+						if (s.isDirectory()) {
+							totalDirs++;
+							countAll(itemPath);
+						} else {
+							totalFiles++;
+						}
+					}
 				}
+				countAll(fullPath);
+				summary.push(`${platformFolder}/${entry}/ (${totalDirs + 1} dirs, ${totalFiles} files)`);
 			}
 		}
-		walk(targetPlatform);
 	}
 
 	const agentsPath = path.join(targetDir, 'AGENTS.md');
 	if (fs.existsSync(agentsPath)) {
-		files.push('AGENTS.md');
+		summary.push('AGENTS.md');
 	}
 
 	const agentsTemplatePath = path.join(targetDir, 'AGENTS.template.md');
 	if (fs.existsSync(agentsTemplatePath)) {
-		files.push('AGENTS.template.md');
+		summary.push('AGENTS.template.md');
 	}
 
-	return files;
+	return summary;
 }
 
 /** Re-export types */
