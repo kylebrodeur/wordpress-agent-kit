@@ -1,3 +1,17 @@
+## [0.3.2] - 2026-06-09
+
+### Fixed
+- **Skills committed to git**: `.github/skills/` removed from `.gitignore` — no more publish-time drift.
+- **All 17 skills included**: Sync restored `blueprint`, `wp-abilities-audit`, `wp-abilities-verify`, `wp-plugin-directory-guidelines`.
+- **Pi extension rewritten**: Uses dynamic import (dist first, src fallback), proper `resources_discover` with explicit paths, checks both `pi` and `github` platforms on `session_start`, removes unused imports.
+- **Verbose output trimmed**: Console.log removed from installer (caller handles messaging). File lists summarized by directory instead of dumping 85+ individual paths.
+
+## [0.3.1]
+
+### Fixed
+- Console.log spam in JSON mode removed
+- filesCreated summarized by directory instead of listing every file
+
 ## [0.3.0] - 2026-06-09
 
 ### Added

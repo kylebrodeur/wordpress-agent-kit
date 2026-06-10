@@ -2,7 +2,7 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.3.1-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.3.2-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
@@ -40,7 +40,7 @@ my-plugin/
 │   ├── instructions/
 │   │   └── wordpress-workflow.instructions.md
 │   ├── prompts/
-│   └── skills/                      # 13 WordPress skills
+│   └── skills/                      # 17 WordPress skills
 │       ├── wp-project-triage/       # Project detection
 │       ├── wp-plugin-development/   # Plugin architecture
 │       ├── wp-block-development/    # Gutenberg blocks
@@ -231,7 +231,6 @@ All 13 skills follow the [AgentSkills.io](https://agentskills.io) specification:
 
 | Skill | When to Use |
 |-------|------------|
-| `wordpress-router` | Classify a WordPress repo and route to the right workflow |
 | `wp-project-triage` | Run deterministic project detection (type, tooling, versions) |
 | `wp-plugin-development` | Develop WordPress plugins (hooks, settings, security, release) |
 | `wp-block-development` | Develop Gutenberg blocks (block.json, attributes, rendering) |
@@ -239,11 +238,15 @@ All 13 skills follow the [AgentSkills.io](https://agentskills.io) specification:
 | `wp-rest-api` | Build, extend, or debug REST API endpoints/routes |
 | `wp-interactivity-api` | Build Interactive blocks with data-wp-* directives |
 | `wp-abilities-api` | Register and consume WordPress Abilities API |
+| `wp-abilities-audit` | Audit a plugin's REST surface for Abilities API opportunities |
+| `wp-abilities-verify` | Verify registered Abilities match their annotations |
 | `wp-performance` | Profile and optimize WordPress performance |
 | `wp-phpstan` | Configure and run PHPStan static analysis |
 | `wp-wpcli-and-ops` | WP-CLI commands, automation, multisite operations |
 | `wp-playground` | Test in disposable WordPress Playground instances |
+| `blueprint` | Write and edit WordPress Playground blueprint JSON |
 | `wpds` | Build UIs with the WordPress Design System |
+| `wp-plugin-directory-guidelines` | GPL compliance, naming, slug rules for WP.org submission |
 
 ---
 

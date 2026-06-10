@@ -3,7 +3,6 @@
 dist/
 node_modules/
 coverage/
-.github/skills/
 vendor/wp-agent-skills/
 pnpm-lock.yaml
 package-lock.json
