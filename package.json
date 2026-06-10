@@ -69,7 +69,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",
-    "vitest": "^2.1.8",
+    "vitest": "^4.1.8",
     "@earendil-works/pi-coding-agent": "^0.78.1",
     "typebox": "*"
   },
