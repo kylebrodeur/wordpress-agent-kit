@@ -14,7 +14,7 @@ When a task is assigned, you must retrieve information in this sequence:
 
 1.  **Local Project Instructions**: Read `.github/instructions/wordpress-workflow.instructions.md` to understand the specific prefix, folder structure, and dev workflow for this repo.
 
-2.  **Agent Skills**: Consult the `.github/skills/` directory.
+2.  **Agent Skills**: Consult the `.agents/skills/` directory.
 
     - Reference `wp-project-triage` to confirm if you are in a Plugin or Theme context.
     - Reference `wp-block-development` for any Gutenberg/React tasks.

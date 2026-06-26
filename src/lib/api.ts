@@ -12,6 +12,27 @@ import { PACKAGE_ROOT } from '../utils/paths.js';
 import { type Platform, installKit } from './installer.js';
 import { computeChanges, isKitInstalled } from './updater.js';
 
+/** Result of clean-skills operation */
+export interface CleanResult {
+	targetDir: string;
+	platform: Platform;
+	orphanedSkills: string[];
+	removedSkills: string[];
+	legacySkillDirs: string[];
+	migratedSkills: string[];
+	dryRun: boolean;
+}
+
+/** Options for cleanSkillsApi */
+export interface CleanOptions {
+	targetDir: string;
+	platform: Platform;
+	/** Only report orphans without removing them (default: false) */
+	dryRun?: boolean;
+	/** Remove orphaned skills (default: false — report only unless true) */
+	remove?: boolean;
+}
+
 /** Result of install operation */
 export interface InstallResult {
 	targetDir: string;
@@ -41,6 +62,7 @@ export interface InstallOptions {
 export interface SyncResult {
 	targetDir: string;
 	skillsSynced: number;
+	customMerged: number;
 	sourceUrl: string;
 	ref: string;
 	durationMs: number;
@@ -416,23 +438,38 @@ export async function syncSkillsApi(options: SyncOptions = {}): Promise<ApiResul
 			// Merge custom skills (skills-custom/) — these are not part of the upstream
 			// WordPress/agent-skills repo and survive upstream syncs.
 			const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
+			let customMerged = 0;
 			if (fs.existsSync(customSkillsDir)) {
 				for (const skillName of fs.readdirSync(customSkillsDir)) {
 					const src = path.join(customSkillsDir, skillName);
 					const dest = path.join(targetSkills, skillName);
 					if (fs.statSync(src).isDirectory()) {
+						const isNew = !fs.existsSync(dest);
 						fs.cpSync(src, dest, { recursive: true });
-						skillsSynced++;
+						if (isNew) {
+							skillsSynced++;
+						}
+						customMerged++;
 					}
 				}
 			}
 
-			return { success: true, skillsSynced, method };
+			// Copy synced skills to the canonical .agents/skills/ directory
+			// (AgentSkills.io convention — the pi.skills path in package.json points here).
+			const canonicalSkills = path.join(PACKAGE_ROOT, '.agents', 'skills');
+			if (fs.existsSync(canonicalSkills)) {
+				fs.rmSync(canonicalSkills, { recursive: true, force: true });
+			}
+			fs.mkdirSync(path.join(PACKAGE_ROOT, '.agents'), { recursive: true });
+			fs.cpSync(targetSkills, canonicalSkills, { recursive: true });
+
+			return { success: true, skillsSynced, customMerged, method };
 		});
 
 		return formatter.success({
 			targetDir,
 			skillsSynced: result.skillsSynced,
+			customMerged: result.customMerged,
 			sourceUrl: 'https://github.com/WordPress/agent-skills.git',
 			ref,
 			durationMs: Date.now() - startTime,
@@ -488,7 +525,15 @@ function dryRunSyncSkills(targetDir: string, ref: string): CliResult<DryRunResul
 	actions.push({
 		type: 'create',
 		target: targetSkills,
-		description: 'Install synced skills',
+		description:
+			'Install synced skills to .github/skills (sync buffer), then copy to .agents/skills (canonical)',
+	});
+
+	const canonicalSkills = path.join(targetDir, '.agents', 'skills');
+	actions.push({
+		type: 'create',
+		target: canonicalSkills,
+		description: 'Copy synced skills to .agents/skills (canonical, AgentSkills.io convention)',
 	});
 
 	return new OutputFormatter('json', 'sync-skills', '0.0.0').success({
@@ -497,6 +542,7 @@ function dryRunSyncSkills(targetDir: string, ref: string): CliResult<DryRunResul
 		summary: {
 			targetDir,
 			skillsSynced: 0,
+			customMerged: 0,
 			sourceUrl: 'https://github.com/WordPress/agent-skills.git',
 			ref,
 			durationMs: 0,
@@ -513,13 +559,17 @@ export async function runTriageApi(options: TriageOptions): Promise<CliResult<Tr
 	const { targetDir, platform = 'github' } = options;
 
 	try {
-		const platformFolder = getPlatformFolder(platform);
 		const triageScriptPaths = [
+			// Canonical location (AgentSkills.io convention)
+			path.join(targetDir, '.agents', 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+			// Legacy platform-specific location
 			path.join(
 				targetDir,
-				platformFolder,
+				getPlatformFolder(platform),
 				'skills/wp-project-triage/scripts/detect_wp_project.mjs'
 			),
+			// Source repo
+			path.join(PACKAGE_ROOT, '.agents', 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
 			path.join(
 				PACKAGE_ROOT,
 				'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'
@@ -717,6 +767,150 @@ function getInstalledSummary(targetDir: string, platform: Platform): string[] {
 	}
 
 	return summary;
+}
+
+/**
+ * Detect and optionally remove orphaned skills from a target installation.
+ * Compares the skills in the target platform directory against the source kit
+ * (upstream .agents/skills + skills-custom/) and identifies skills that exist
+ * in the target but not in the source.
+ */
+export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<CleanResult>> {
+	const startTime = Date.now();
+	const formatter = new OutputFormatter('json', 'clean-skills', '0.0.0');
+	const { targetDir, platform, dryRun = false, remove = false } = options;
+
+	try {
+		// Canonical skills come from .agents/skills/ (AgentSkills.io convention)
+		// with skills-custom/ as supplemental source for custom skills.
+		const canonicalSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
+		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
+		const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
+
+		// Build set of canonical skill names (upstream + custom)
+		const canonicalSkills = new Set<string>();
+
+		if (fs.existsSync(canonicalSkillsDir)) {
+			for (const entry of fs.readdirSync(canonicalSkillsDir)) {
+				const entryPath = path.join(canonicalSkillsDir, entry);
+				if (fs.statSync(entryPath).isDirectory()) {
+					canonicalSkills.add(entry);
+				}
+			}
+		}
+
+		if (fs.existsSync(customSkillsDir)) {
+			for (const entry of fs.readdirSync(customSkillsDir)) {
+				const entryPath = path.join(customSkillsDir, entry);
+				if (fs.statSync(entryPath).isDirectory()) {
+					canonicalSkills.add(entry);
+				}
+			}
+		}
+
+		// Find orphaned skills in target .agents/skills/
+		const orphanedSkills: string[] = [];
+		if (fs.existsSync(targetSkillsDir)) {
+			for (const entry of fs.readdirSync(targetSkillsDir)) {
+				const entryPath = path.join(targetSkillsDir, entry);
+				if (fs.statSync(entryPath).isDirectory() && !canonicalSkills.has(entry)) {
+					orphanedSkills.push(entry);
+				}
+			}
+		}
+
+		// Detect legacy skill directories (platform-specific skills/ dirs)
+		const platformFolder = getPlatformFolder(platform);
+		const legacySkillsDir = path.join(targetDir, platformFolder, 'skills');
+		const legacySkillDirs: string[] = [];
+		if (fs.existsSync(legacySkillsDir)) {
+			legacySkillDirs.push(legacySkillsDir);
+		}
+		// Also check .github/skills for github platform (common legacy location)
+		if (platform !== 'github') {
+			const githubSkills = path.join(targetDir, '.github', 'skills');
+			if (fs.existsSync(githubSkills)) {
+				legacySkillDirs.push(githubSkills);
+			}
+		}
+
+		// Migrate legacy skills to .agents/skills/ and remove legacy dirs
+		const migratedSkills: string[] = [];
+		if (remove && !dryRun && legacySkillDirs.length > 0) {
+			for (const legacyDir of legacySkillDirs) {
+				for (const entry of fs.readdirSync(legacyDir)) {
+					const entryPath = path.join(legacyDir, entry);
+					if (!fs.statSync(entryPath).isDirectory()) continue;
+					const destPath = path.join(targetSkillsDir, entry);
+					if (!fs.existsSync(destPath)) {
+						fs.mkdirSync(path.dirname(destPath), { recursive: true });
+						fs.cpSync(entryPath, destPath, { recursive: true });
+						migratedSkills.push(entry);
+					}
+				}
+				// Remove the legacy skills directory
+				fs.rmSync(legacyDir, { recursive: true, force: true });
+			}
+		}
+
+		// Remove orphans if requested
+		const removedSkills: string[] = [];
+		if (remove && !dryRun) {
+			for (const orphan of orphanedSkills) {
+				const orphanPath = path.join(targetSkillsDir, orphan);
+				fs.rmSync(orphanPath, { recursive: true, force: true });
+				removedSkills.push(orphan);
+			}
+		}
+
+		const _durationMs = Date.now() - startTime;
+
+		if (dryRun) {
+			const actions: DryRunResult['actions'] = orphanedSkills.map((s) => ({
+				type: 'delete' as const,
+				target: path.join('.agents', 'skills', s),
+				description: `Remove orphaned skill: ${s}`,
+			}));
+			for (const legacyDir of legacySkillDirs) {
+				actions.push({
+					type: 'delete' as const,
+					target: legacyDir,
+					description: `Migrate and remove legacy skill directory: ${path.relative(targetDir, legacyDir)}`,
+				});
+			}
+			return formatter.success({
+				wouldExecute: true,
+				actions,
+				summary: {
+					targetDir,
+					platform,
+					orphanedSkills,
+					removedSkills: [],
+					legacySkillDirs,
+					migratedSkills: [],
+					dryRun: true,
+				},
+			});
+		}
+
+		return formatter.success({
+			targetDir,
+			platform,
+			orphanedSkills,
+			removedSkills,
+			legacySkillDirs,
+			migratedSkills,
+			dryRun: false,
+		});
+	} catch (error: unknown) {
+		const err = error as Error & { code?: string; exitCode?: ExitCode };
+		return formatter.fail({
+			code: err.code || 'CLEAN_FAILED',
+			message: err.message || 'Clean failed',
+			exitCode: err.exitCode ?? ExitCode.ERROR,
+			details: { platform, targetDir },
+		});
+	}
 }
 
 /** Re-export types */

@@ -6,23 +6,31 @@ This repository is WordPress-centric (plugin, theme, block theme, or site). Agen
 
 - **Core Agent**: `.github/agents/wp-architect.agent.md` — the primary agent persona
 - **Workflow Instructions**: `.github/instructions/wordpress-workflow.instructions.md` — project-specific conventions
-- **Skills**: `.github/skills/` — specialized agent skills for WordPress development
+- **Skills**: `.agents/skills/` — specialized agent skills for WordPress development
 
 ## Project Discovery (Required Before Changes)
 
 1. **Run project triage** to classify the codebase:
    ```bash
-   node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
+   node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
    ```
    This outputs a JSON report with project kind, signals, and tooling.
 
 2. **Route to the right skill**:
-   - If routing is unclear, consult `.github/skills/wordpress-router/references/decision-tree.md`
+   - If routing is unclear, consult `.agents/skills/wordpress-router/references/decision-tree.md`
    - For plugins: `wp-plugin-development`
    - For block themes: `wp-block-themes`
    - For Gutenberg blocks: `wp-block-development`
    - For REST API work: `wp-rest-api`
+   - For Interactivity API: `wp-interactivity-api`
+   - For Abilities API: `wp-abilities-api` / `wp-abilities-audit` / `wp-abilities-verify`
    - For WP-CLI operations: `wp-wpcli-and-ops`
+   - For Playground testing (PHPUnit, E2E, CI): `wp-playground`
+   - For Performance profiling: `wp-performance`
+   - For PHPStan static analysis: `wp-phpstan`
+   - For WP Engine hosting: `wp-wpengine` (optional, requires env vars)
+   - For Design System components: `wpds`
+   - For plugin directory submission: `wp-plugin-directory-guidelines`
 
 3. **Update repo-specific guidance** based on triage results:
    - Confirm the project prefix (functions, classes, constants)

@@ -40,6 +40,9 @@ export const syncSkillsCommand = new Command('sync-skills')
 			const data = result.data;
 			console.log(`✓ Synced ${data.skillsSynced} skills from WordPress/agent-skills@${ref}`);
 			console.log(`  Method: ${data.method}`);
+			if (data.customMerged > 0) {
+				console.log(`  Custom skills merged: ${data.customMerged}`);
+			}
 			console.log(`  Duration: ${data.durationMs}ms`);
 		} else if (isDryRunResult(result)) {
 			// Dry-run result

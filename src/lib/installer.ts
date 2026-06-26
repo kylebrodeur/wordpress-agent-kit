@@ -17,6 +17,81 @@ export const PLATFORM_FOLDERS: Record<Platform, string> = {
 	pi: '.pi/agent',
 };
 
+/**
+ * Copy universal skills from .agents/skills/ to the target directory.
+ * Uses the AgentSkills.io convention (.agents/skills/) which is discovered
+ * automatically by Pi, GitHub Copilot, and other agents.
+ */
+function copyUniversalSkills(targetDir: string): {
+	copied: string[];
+	skipped: string[];
+} {
+	const sourceSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
+	const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
+	const copied: string[] = [];
+	const skipped: string[] = [];
+
+	if (!fs.existsSync(sourceSkillsDir)) {
+		return { copied, skipped };
+	}
+
+	if (!fs.existsSync(targetSkillsDir)) {
+		fs.mkdirSync(targetSkillsDir, { recursive: true });
+	}
+
+	for (const skillName of fs.readdirSync(sourceSkillsDir)) {
+		const src = path.join(sourceSkillsDir, skillName);
+		if (!fs.statSync(src).isDirectory()) continue;
+
+		const dest = path.join(targetSkillsDir, skillName);
+		if (fs.existsSync(dest)) {
+			skipped.push(skillName);
+		} else {
+			fs.cpSync(src, dest, { recursive: true });
+			copied.push(skillName);
+		}
+	}
+
+	return { copied, skipped };
+}
+
+/**
+ * Merge custom skills from skills-custom/ into the target's universal skills directory.
+ * Only copies skills that don't already exist in the target (avoids overwriting
+ * upstream versions that may have been user-modified).
+ * Returns arrays of skill names that were merged or skipped.
+ */
+function mergeCustomSkills(targetDir: string): {
+	merged: string[];
+	skipped: string[];
+} {
+	const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
+	if (!fs.existsSync(customSkillsDir)) {
+		return { merged: [], skipped: [] };
+	}
+
+	const targetSkills = path.join(targetDir, '.agents', 'skills');
+	const merged: string[] = [];
+	const skipped: string[] = [];
+
+	for (const skillName of fs.readdirSync(customSkillsDir)) {
+		const src = path.join(customSkillsDir, skillName);
+		if (!fs.statSync(src).isDirectory()) continue;
+
+		const dest = path.join(targetSkills, skillName);
+		if (fs.existsSync(dest)) {
+			// Don't overwrite — upstream or user version takes priority
+			skipped.push(skillName);
+		} else {
+			fs.mkdirSync(path.dirname(dest), { recursive: true });
+			fs.cpSync(src, dest, { recursive: true });
+			merged.push(skillName);
+		}
+	}
+
+	return { merged, skipped };
+}
+
 /** Options for installKit */
 export interface InstallKitOptions {
 	targetDir: string;
@@ -45,6 +120,12 @@ export interface InstallKitResult {
  * Installs the WordPress Agent Kit into the specified directory for a given platform.
  * If the kit is already installed, uses safe update logic to preserve user modifications.
  *
+ * Installation layout:
+ * - .agents/skills/          — Universal skills (AgentSkills.io convention)
+ * - .github/ (or .pi/agent/, etc.) — Platform-specific agents, instructions, prompts
+ * - AGENTS.md                — Project-level agent instructions
+ * - AGENTS.template.md       — Template reference for future updates
+ *
  * @param targetDir - The directory where the kit should be installed.
  * @param platform - The target platform (github, cursor, claude, agent, pi)
  * @returns InstallKitResult with details of what was created/skipped
@@ -66,6 +147,62 @@ export function installKit(
 
 	// Fresh install or fallback to full replacement
 	return fullInstall(targetDir, platform, force);
+}
+
+/**
+ * Migrate legacy skill directories to the universal .agents/skills/ convention.
+ * Detects skills in platform-specific directories (e.g., .github/skills/, .pi/agent/skills/)
+ * and moves them to .agents/skills/ if they don't already exist there.
+ * Returns lists of migrated and removed skill names.
+ */
+function migrateLegacySkills(
+	targetDir: string,
+	platform: Platform
+): {
+	migrated: string[];
+	removed: string[];
+} {
+	const platformFolder = PLATFORM_FOLDERS[platform];
+	const legacySkillsDir = path.join(targetDir, platformFolder, 'skills');
+	const universalSkillsDir = path.join(targetDir, '.agents', 'skills');
+	const migrated: string[] = [];
+	const removed: string[] = [];
+
+	if (!fs.existsSync(legacySkillsDir)) {
+		return { migrated, removed };
+	}
+
+	// Ensure universal directory exists
+	if (!fs.existsSync(universalSkillsDir)) {
+		fs.mkdirSync(universalSkillsDir, { recursive: true });
+	}
+
+	for (const skillName of fs.readdirSync(legacySkillsDir)) {
+		const srcPath = path.join(legacySkillsDir, skillName);
+		const destPath = path.join(universalSkillsDir, skillName);
+
+		if (!fs.statSync(srcPath).isDirectory()) continue;
+
+		if (!fs.existsSync(destPath)) {
+			// Migrate: copy to universal location
+			fs.cpSync(srcPath, destPath, { recursive: true });
+			migrated.push(skillName);
+		} else {
+			// Already exists in universal location — just remove from legacy
+			removed.push(skillName);
+		}
+
+		// Remove from legacy location
+		fs.rmSync(srcPath, { recursive: true, force: true });
+	}
+
+	// Remove the legacy skills directory if empty
+	const remaining = fs.readdirSync(legacySkillsDir);
+	if (remaining.length === 0) {
+		fs.rmSync(legacySkillsDir, { recursive: true, force: true });
+	}
+
+	return { migrated, removed };
 }
 
 /**
@@ -94,18 +231,23 @@ function fullInstall(targetDir: string, platform: Platform, _force: boolean): In
 	const filesCreated: string[] = [];
 	const filesSkipped: string[] = [];
 
-	// Copy platform-specific folder
+	// Copy platform-specific folder (agents, instructions — NOT skills)
 	const targetPlatform = path.join(targetDir, platformFolder);
 	if (fs.existsSync(targetPlatform)) {
 		fs.rmSync(targetPlatform, { recursive: true, force: true });
 	}
 	if (fs.existsSync(sourceGithub)) {
 		fs.cpSync(sourceGithub, targetPlatform, { recursive: true });
+		// Remove skills from platform dir — skills go to .agents/skills/ instead
+		const platformSkills = path.join(targetPlatform, 'skills');
+		if (fs.existsSync(platformSkills)) {
+			fs.rmSync(platformSkills, { recursive: true, force: true });
+		}
 	} else {
 		throw new Error('Could not find source .github directory.');
 	}
 
-	// Collect created files
+	// Collect created files (excluding skills which are in .agents/)
 	const collectFiles = (dir: string, prefix: string): void => {
 		if (!fs.existsSync(dir)) return;
 		const entries = fs.readdirSync(dir);
@@ -120,6 +262,33 @@ function fullInstall(targetDir: string, platform: Platform, _force: boolean): In
 		}
 	};
 	collectFiles(targetPlatform, platformFolder);
+
+	// Migrate legacy skills from platform-specific dir to .agents/skills/
+	const migrationResult = migrateLegacySkills(targetDir, platform);
+	for (const skill of migrationResult.migrated) {
+		filesCreated.push(`.agents/skills/${skill} (migrated from ${platformFolder}/skills/)`);
+	}
+	for (const skill of migrationResult.removed) {
+		filesSkipped.push(`.agents/skills/${skill} (already existed, removed legacy copy)`);
+	}
+
+	// Copy universal skills to .agents/skills/ (AgentSkills.io convention)
+	const universalResult = copyUniversalSkills(targetDir);
+	for (const skill of universalResult.copied) {
+		filesCreated.push(`.agents/skills/${skill}`);
+	}
+	for (const skill of universalResult.skipped) {
+		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
+	}
+
+	// Merge custom skills from skills-custom/ (e.g., wp-wpengine)
+	const customResult = mergeCustomSkills(targetDir);
+	for (const skill of customResult.merged) {
+		filesCreated.push(`.agents/skills/${skill}`);
+	}
+	for (const skill of customResult.skipped) {
+		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
+	}
 
 	// Copy AGENTS.md template
 	const targetAgentsTemplate = path.join(targetDir, 'AGENTS.template.md');
@@ -187,6 +356,35 @@ function safeUpdateInstall(
 		filesCreated.push('AGENTS.md (from template)');
 	} else {
 		filesSkipped.push('AGENTS.md (preserved)');
+	}
+
+	// Migrate legacy skills from platform-specific dir to .agents/skills/
+	const migrationResult = migrateLegacySkills(targetDir, platform);
+	for (const skill of migrationResult.migrated) {
+		filesCreated.push(
+			`.agents/skills/${skill} (migrated from ${PLATFORM_FOLDERS[platform]}/skills/)`
+		);
+	}
+	for (const skill of migrationResult.removed) {
+		filesSkipped.push(`.agents/skills/${skill} (already existed, removed legacy copy)`);
+	}
+
+	// Copy universal skills to .agents/skills/ (AgentSkills.io convention)
+	const universalResult = copyUniversalSkills(targetDir);
+	for (const skill of universalResult.copied) {
+		filesCreated.push(`.agents/skills/${skill}`);
+	}
+	for (const skill of universalResult.skipped) {
+		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
+	}
+
+	// Merge custom skills from skills-custom/ (e.g., wp-wpengine)
+	const customResult = mergeCustomSkills(targetDir);
+	for (const skill of customResult.merged) {
+		filesCreated.push(`.agents/skills/${skill}`);
+	}
+	for (const skill of customResult.skipped) {
+		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
 	}
 
 	return {

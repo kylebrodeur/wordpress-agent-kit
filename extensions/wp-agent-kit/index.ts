@@ -1,12 +1,13 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 /**
  * WordPress Agent Kit — Pi Extension
  *
  * Provides Pi Coding Agent with WordPress development tools:
- * - 17 WordPress agent skills (plugin/theme/block dev, REST API, WP-CLI, etc.)
+ * - 18 WordPress agent skills (17 upstream + wp-wpengine custom) at .agents/skills/ (AgentSkills.io convention)
  * - Project triage detection
- * - Skill installation, syncing, and upgrade management
+ * - Skill installation, syncing, upgrade, and orphan cleanup
  *
  * Follows Pi Coding Agent SDK conventions (extensions.md, packages.md, skills.md).
  */
@@ -25,17 +26,43 @@ try {
 	apiModule = (await import('../../src/lib/api.js')) as typeof import('../../dist/lib/api.js');
 }
 
-const { installKitApi, syncSkillsApi, runTriageApi, isKitInstalled, loadManifest } = apiModule;
+const { installKitApi, syncSkillsApi, runTriageApi, cleanSkillsApi, isKitInstalled, loadManifest } =
+	apiModule;
 
 export default function (pi: ExtensionAPI) {
 	// =========================================================================
 	// Skills Registration
 	// =========================================================================
+	// Primary skills (.agents/skills/) are registered via `pi.skills` in package.json.
+	// Pi also auto-discovers from .agents/skills/ at the project level (AgentSkills.io convention).
+	// The resources_discover handler ONLY supplements skills that aren't already
+	// covered by the static manifest — specifically, custom skills from
+	// skills-custom/ that haven't been synced into .agents/skills/ yet.
+	// This avoids name collisions (Pi keeps first-loaded, warns on duplicates).
 	pi.on('resources_discover', async (_event, _ctx) => {
-		const skillsDir = path.join(PACKAGE_ROOT, '.github', 'skills');
+		const canonicalSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
+		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
 		const promptsDir = path.join(PACKAGE_ROOT, '.github', 'prompts');
+
+		// Only discover custom skills that aren't already in .agents/skills/
+		// (which is registered via pi.skills in package.json).
+		const skillPaths: string[] = [];
+		if (fs.existsSync(customSkillsDir)) {
+			const existingSkills = fs.existsSync(canonicalSkillsDir)
+				? new Set(fs.readdirSync(canonicalSkillsDir))
+				: new Set<string>();
+			for (const entry of fs.readdirSync(customSkillsDir)) {
+				if (!existingSkills.has(entry)) {
+					const entryPath = path.join(customSkillsDir, entry);
+					if (fs.statSync(entryPath).isDirectory()) {
+						skillPaths.push(entryPath);
+					}
+				}
+			}
+		}
+
 		return {
-			skillPaths: [skillsDir],
+			skillPaths: skillPaths.length > 0 ? skillPaths : undefined,
 			promptPaths: [promptsDir],
 		};
 	});
@@ -127,7 +154,7 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_install_kit',
 		label: 'WP Install Kit',
 		description:
-			'Install WordPress Agent Kit into a project directory. Copies 17 WordPress development skills, agent definitions, workflow instructions, and an AGENTS.md template. Safe by default — preserves user modifications on re-run.',
+			'Install WordPress Agent Kit into a project directory. Copies 18 WordPress skills to .agents/skills/ (AgentSkills.io convention), platform-specific agents/instructions/prompts, and an AGENTS.md template. Safe by default — preserves user modifications on re-run.',
 		promptSnippet: 'Install WordPress AI agent skills and configuration into a project',
 		promptGuidelines: [
 			'Use wp_install_kit when setting up a new WordPress project for AI agent development.',
@@ -243,7 +270,7 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_sync_skills',
 		label: 'WP Sync Skills',
 		description:
-			'Sync WordPress agent skills from the upstream WordPress/agent-skills repository. Fetches the latest 17 skill definitions and replaces the local skills directory.',
+			'Sync WordPress agent skills from the upstream WordPress/agent-skills repository. Fetches the latest upstream skill definitions and merges custom skills from skills-custom/ — custom skills survive upstream syncs.',
 		promptSnippet: 'Sync latest WordPress agent skills from upstream',
 		promptGuidelines: [
 			'Use wp_sync_skills to pull the latest WordPress development skills from WordPress/agent-skills.',
@@ -273,11 +300,14 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const data = result.data as { skillsSynced: number; method: string };
+			const customSkillNote = fs.existsSync(path.join(PACKAGE_ROOT, 'skills-custom'))
+				? '\n**Custom skills**: Merged from skills-custom/'
+				: '';
 			return {
 				content: [
 					{
 						type: 'text',
-						text: `# Skills Synced\n\n**Synced**: ${data.skillsSynced} skills\n**Method**: ${data.method}`,
+						text: `# Skills Synced\n\n**Synced**: ${data.skillsSynced} skills\n**Method**: ${data.method}${customSkillNote}`,
 					},
 				],
 				details: data,
@@ -315,7 +345,6 @@ export default function (pi: ExtensionAPI) {
 			const currentVersion = manifest?.version || 'not installed';
 			const latestVersion = (() => {
 				try {
-					const fs = require('node:fs');
 					return JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8'))
 						.version;
 				} catch {
@@ -393,6 +422,114 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	// --- wp_clean_skills ---
+	pi.registerTool({
+		name: 'wp_clean_skills',
+		label: 'WP Clean Skills',
+		description:
+			'Detect and remove orphaned skills from a WordPress Agent Kit installation. Compares installed skills against the canonical set (upstream + custom) and reports or removes skills that are no longer part of the kit. Safe by default — use dryRun first to preview.',
+		promptSnippet: 'Clean up orphaned WordPress agent skills',
+		promptGuidelines: [
+			'Use wp_clean_skills after upgrading to remove skills that are no longer part of the kit.',
+			'Always run with dryRun: true first to preview what would be removed.',
+			'This only removes skill directories — it does not modify AGENTS.md or other config files.',
+		],
+		parameters: Type.Object({
+			targetDir: Type.Optional(
+				Type.String({
+					description: 'WordPress project directory (defaults to current working directory)',
+				})
+			),
+			dryRun: Type.Optional(
+				Type.Boolean({
+					description: 'Preview changes without applying (default: true for safety)',
+				})
+			),
+			remove: Type.Optional(
+				Type.Boolean({
+					description: 'Actually remove orphaned skills (default: false — report only)',
+				})
+			),
+		}),
+		async execute(_callId, params, _signal, _onUpdate, _ctx) {
+			const targetDir = params.targetDir || process.cwd();
+			const dryRun = params.dryRun ?? true;
+			const remove = params.remove ?? false;
+
+			const result = await cleanSkillsApi({
+				targetDir,
+				platform: 'pi',
+				dryRun,
+				remove,
+			});
+
+			if (!result.success) {
+				return {
+					content: [
+						{ type: 'text', text: `Clean failed: ${result.error?.message || 'Unknown error'}` },
+					],
+					isError: true,
+				};
+			}
+
+			const data = result.data as {
+				orphanedSkills: string[];
+				removedSkills: string[];
+				legacySkillDirs: string[];
+				migratedSkills: string[];
+				dryRun: boolean;
+			};
+
+			const hasNoIssues = data.orphanedSkills.length === 0 && data.legacySkillDirs.length === 0;
+			if (hasNoIssues) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: '# All Clean\n\nAll installed skills match the canonical set. No orphaned or legacy skills found.',
+						},
+					],
+					details: data,
+				};
+			}
+
+			const lines = [dryRun ? '# Skills Cleanup Preview (Dry Run)' : '# Skills Cleaned Up', ''];
+
+			if (data.orphanedSkills.length > 0) {
+				lines.push(`**Orphaned skills** (${data.orphanedSkills.length}):`);
+				for (const skill of data.orphanedSkills) {
+					lines.push(`- ${skill}`);
+				}
+			}
+
+			if (data.legacySkillDirs.length > 0) {
+				lines.push('', `**Legacy skill directories** (${data.legacySkillDirs.length}):`);
+				for (const dir of data.legacySkillDirs) {
+					lines.push(`- ${dir}`);
+				}
+				lines.push('These will be migrated to `.agents/skills/` and then removed.');
+			}
+
+			if (dryRun) {
+				lines.push('', 'Run with `remove: true` to clean up.');
+			} else {
+				if (data.removedSkills.length > 0) {
+					lines.push('', `Removed **${data.removedSkills.length}** orphaned skill(s).`);
+				}
+				if (data.migratedSkills.length > 0) {
+					lines.push(
+						`Migrated **${data.migratedSkills.length}** skill(s) from legacy directories.`
+					);
+				}
+			}
+
+			return {
+				content: [{ type: 'text', text: lines.join('\n') }],
+				details: data,
+			};
+		},
+	});
+
 	// =========================================================================
 	// Commands
 	// =========================================================================
@@ -431,7 +568,15 @@ export default function (pi: ExtensionAPI) {
 				`${data.isUpdate ? 'Updated' : 'Installed'} (${data.filesCreated.length} entries)`,
 				'info'
 			);
-			ctx.ui.setStatus('wp-agent-kit', 'v0.3.0 installed');
+			const pkgVersion = (() => {
+				try {
+					return JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8'))
+						.version;
+				} catch {
+					return 'unknown';
+				}
+			})();
+			ctx.ui.setStatus('wp-agent-kit', `v${pkgVersion} installed`);
 		},
 	});
 
@@ -447,6 +592,36 @@ export default function (pi: ExtensionAPI) {
 			const data = result.data as { skillsSynced: number };
 			ctx.ui.notify(`Synced ${data.skillsSynced} skills`, 'info');
 			ctx.ui.setStatus('wp-agent-kit', `${data.skillsSynced} skills`);
+		},
+	});
+
+	pi.registerCommand('wp-clean-skills', {
+		description: 'Detect and remove orphaned/legacy skills from WordPress Agent Kit',
+		handler: async (args, ctx) => {
+			const targetDir = args?.trim() || ctx.cwd;
+			ctx.ui.setStatus('wp-clean', 'Checking for orphaned and legacy skills...');
+			const result = await cleanSkillsApi({
+				targetDir,
+				platform: 'pi',
+				dryRun: true,
+				remove: false,
+			});
+			if (!result.success) {
+				ctx.ui.notify(`Clean failed: ${result.error?.message}`, 'error');
+				return;
+			}
+			const data = result.data as { orphanedSkills: string[]; legacySkillDirs: string[] };
+			const total = data.orphanedSkills.length + data.legacySkillDirs.length;
+			if (total === 0) {
+				ctx.ui.notify('No orphaned or legacy skills found', 'info');
+			} else {
+				const parts: string[] = [];
+				if (data.orphanedSkills.length > 0) parts.push(`${data.orphanedSkills.length} orphaned`);
+				if (data.legacySkillDirs.length > 0)
+					parts.push(`${data.legacySkillDirs.length} legacy dir(s)`);
+				ctx.ui.notify(`Found ${parts.join(', ')}`, 'info');
+			}
+			ctx.ui.setStatus('wp-clean', total === 0 ? 'clean' : `${total} issues`);
 		},
 	});
 }

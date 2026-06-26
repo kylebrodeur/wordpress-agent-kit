@@ -1,10 +1,10 @@
 \# WordPress Agent Skills Workflow
 
-This repo uses a local, filesystem-based set of WordPress agent skills under `.github/skills/`. Follow these procedures for every interaction.
+This repo uses a local, filesystem-based set of WordPress agent skills under `.agents/skills/`. Follow these procedures for every interaction.
 
 \## 1. Skill Discovery & Activation
 
-\- \*\*Always start by scanning \`.github/skills/\`\*\* to see which specialized modules are active.
+\- \*\*Always start by scanning \`.agents/skills/\`\*\* to see which specialized modules are active.
 
 \- If the user asks for a Block, explicitly activate the \`wp-block-development\` skill.
 

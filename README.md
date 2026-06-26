@@ -2,7 +2,7 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
@@ -26,7 +26,7 @@ npx wp-agent-kit install /path/to/my-plugin --platform github
 npx wp-agent-kit setup /path/to/my-plugin --auto
 
 # 3. (Optional) Verify the triage report
-node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
+node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
 ```
 
 **What gets installed:**
@@ -34,13 +34,8 @@ node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
 my-plugin/
 ├── AGENTS.md                  # Project-specific agent instructions
 ├── AGENTS.template.md         # Template reference for future updates
-├── .github/
-│   ├── agents/
-│   │   └── wp-architect.agent.md    # WordPress Architect agent persona
-│   ├── instructions/
-│   │   └── wordpress-workflow.instructions.md
-│   ├── prompts/
-│   └── skills/                      # 17 WordPress skills + 1 optional
+├── .agents/
+│   └── skills/                  # 18 WordPress skills (AgentSkills.io convention)
 │       ├── wp-project-triage/       # Project detection
 │       ├── wp-plugin-development/   # Plugin architecture
 │       ├── wp-block-development/    # Gutenberg blocks
@@ -55,6 +50,12 @@ my-plugin/
 │       ├── wpds/                    # Design system
 │       ├── wordpress-router/        # Repo classification
 │       └── wp-wpengine/             # (optional) WP Engine hosting + git push
+├── .github/
+│   ├── agents/
+│   │   └── wp-architect.agent.md    # WordPress Architect agent persona
+│   ├── instructions/
+│   │   └── wordpress-workflow.instructions.md
+│   └── prompts/
 └── .wp-agent-kit-manifest.github.json  # Safe-update tracking
 ```
 
@@ -65,7 +66,7 @@ my-plugin/
 npx wp-agent-kit install /path/to/existing-plugin --platform github
 
 # 2. Run triage to detect your project's type, tech stack, and tooling
-node .github/skills/wp-project-triage/scripts/detect_wp_project.mjs
+node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
 
 # 3. Configure based on detection (headless)
 npx wp-agent-kit setup /path/to/existing-plugin --auto
@@ -228,7 +229,7 @@ console.log(triage.data.project.primary); // "plugin"
 
 ## Skills Reference
 
-All 17 skills follow the [AgentSkills.io](https://agentskills.io) specification. Skills in `skills-custom/` are project-specific (not from upstream) and survive `sync-skills`:
+All 18 skills follow the [AgentSkills.io](https://agentskills.io) specification. Skills in `skills-custom/` are project-specific (not from upstream) and survive `sync-skills`:
 
 | Skill | When to Use |
 |-------|------------|

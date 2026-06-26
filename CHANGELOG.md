@@ -1,3 +1,28 @@
+## [0.5.0] - 2026-06-27
+
+### Added
+- **AgentSkills.io convention**: Skills are now installed to `.agents/skills/` (universal, AgentSkills.io convention) instead of platform-specific directories. This makes skills discoverable by any agent that follows the spec (Pi, Claude, Cursor, Copilot).
+- **`wp_clean_skills` tool and CLI**: New tool to detect and remove orphaned skills from installed projects. Supports `--dry-run` (default) and `--remove` modes. Available as Pi tool, Pi command `/wp-clean-skills`, and CLI command `wp-agent-kit clean-skills`.
+- **`cleanSkillsApi`**: Programmatic API for detecting and removing orphaned skills.
+- **Custom skills merge in `installKit`**: `installKit` now merges `skills-custom/` into the target's `.agents/skills/`, ensuring custom skills are installed even without running `sync-skills` first.
+- **`customMerged` field in `SyncResult`**: `syncSkillsApi` now reports how many custom skills were merged separately from the total count.
+- **Migration support**: `installKit` and `cleanSkillsApi` handle migration from legacy `.github/skills/` and platform-specific skill directories to `.agents/skills/`.
+
+### Changed
+- **Skill directory**: Canonical skill location changed from `.github/skills/` to `.agents/skills/`. The `.github/skills/` directory is now a sync buffer (gitignored). Skills are committed in `.agents/skills/`.
+- **`pi.skills` in package.json**: Changed from `./.github/skills` to `./.agents/skills` (AgentSkills.io convention).
+- **Pi `resources_discover`**: No longer returns `.agents/skills/` (handled by `pi.skills` auto-discovery). Only supplements with unsynced custom skills from `skills-custom/`.
+- **Pi `wp_install_kit`**: Now copies skills to `.agents/skills/` (universal) instead of platform-specific `skills/` subdirectory.
+- **Pi `wp_sync_skills`**: Now copies synced skills to `.agents/skills/` after upstream sync.
+- **Pi `wp_install` command**: Version status now reads dynamically from `package.json` instead of hardcoded string.
+- **`syncSkillsApi`**: After upstream sync to `.github/skills/`, also copies to `.agents/skills/` and merges custom skills there. Only increments count for new custom skills (not overwrites).
+
+### Fixed
+- **Pi skill collision**: Removed duplicate skill discovery — `.agents/skills/` is only registered once via `pi.skills`, not also via `resources_discover`.
+- **Pi `wp_sync_skills`**: Result now shows custom skills merge note when applicable.
+- **Pi extension**: Added `import fs from 'node:fs'` (was using CJS `require`), removed hardcoded version string.
+- **`AGENTS.template.md`**: Expanded skill routing table from 5 to 13 entries.
+
 ## [0.4.0] - 2026-06-26
 
 ### Added

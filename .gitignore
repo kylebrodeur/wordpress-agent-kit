@@ -7,6 +7,9 @@ vendor/wp-agent-skills/
 pnpm-lock.yaml
 package-lock.json
 
+# Upstream sync buffer — canonical skills live in .agents/skills/
+.github/skills/
+
 # Personal development prompts (not for distribution)
 .github/prompts/
 

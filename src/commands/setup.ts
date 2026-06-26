@@ -145,15 +145,16 @@ export const setupCommand = new Command('setup')
 		let detectedPackageManager = 'npm/pnpm';
 
 		const triageScriptPaths = [
+			// Canonical location (AgentSkills.io convention)
+			path.join(targetDir, '.agents', 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
+			// Legacy platform-specific location
 			path.join(
 				targetDir,
 				platformFolder,
 				'skills/wp-project-triage/scripts/detect_wp_project.mjs'
 			),
-			path.join(
-				PACKAGE_ROOT,
-				'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'
-			),
+			// Source repo
+			path.join(PACKAGE_ROOT, '.agents', 'skills/wp-project-triage/scripts/detect_wp_project.mjs'),
 		];
 
 		const triageScriptPath = triageScriptPaths.find((p) => fs.existsSync(p));
@@ -348,7 +349,7 @@ export const setupCommand = new Command('setup')
 		console.log(`  1. Review ${path.join(targetDir, 'AGENTS.md')}`);
 		console.log(`  2. Customize ${path.join(targetDir, platformFolder, 'prompts/')}`);
 		console.log(
-			`  3. Run triage: node ${path.join(targetDir, platformFolder, 'skills/wp-project-triage/scripts/detect_wp_project.mjs')}`
+			`  3. Run triage: node ${path.join(targetDir, '.agents', 'skills/wp-project-triage/scripts/detect_wp_project.mjs')}`
 		);
 
 		process.exit(0);

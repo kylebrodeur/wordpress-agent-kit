@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
+import { cleanSkillsCommand } from './commands/clean-skills.js';
 import { installCommand } from './commands/install.js';
 import { runPlaygroundCommand } from './commands/run-playground.js';
 import { setupCommand } from './commands/setup.js';
@@ -29,6 +30,7 @@ program
 	});
 
 // Add commands
+program.addCommand(cleanSkillsCommand);
 program.addCommand(installCommand);
 program.addCommand(setupCommand);
 program.addCommand(syncSkillsCommand);
@@ -60,8 +62,10 @@ Examples:
   $ wp-agent-kit install --platform github
   $ wp-agent-kit setup --auto --json
   $ wp-agent-kit sync-skills --ref trunk --ndjson
-  $ wp-agent-kit install --platform pi --dry-run --json
+  $ wp-agent-kit clean-skills --dry-run --json
+  $ wp-agent-kit clean-skills --remove --platform github
   $ wp-agent-kit upgrade --check-only --json
+
 
 Programmatic API:
   import { installKit, syncSkills, runTriage } from 'wordpress-agent-kit/api';
