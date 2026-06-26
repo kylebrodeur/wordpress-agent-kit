@@ -413,6 +413,20 @@ export async function syncSkillsApi(options: SyncOptions = {}): Promise<ApiResul
 				skillsSynced = fs.readdirSync(targetSkills).length;
 			}
 
+			// Merge custom skills (skills-custom/) — these are not part of the upstream
+			// WordPress/agent-skills repo and survive upstream syncs.
+			const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
+			if (fs.existsSync(customSkillsDir)) {
+				for (const skillName of fs.readdirSync(customSkillsDir)) {
+					const src = path.join(customSkillsDir, skillName);
+					const dest = path.join(targetSkills, skillName);
+					if (fs.statSync(src).isDirectory()) {
+						fs.cpSync(src, dest, { recursive: true });
+						skillsSynced++;
+					}
+				}
+			}
+
 			return { success: true, skillsSynced, method };
 		});
 

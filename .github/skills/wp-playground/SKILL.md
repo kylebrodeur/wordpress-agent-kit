@@ -1,6 +1,6 @@
 ---
 name: wp-playground
-description: "Use for WordPress Playground workflows: fast disposable WP instances in the browser or locally via @wp-playground/cli (server, run-blueprint, build-snapshot), auto-mounting plugins/themes, switching WP/PHP versions, blueprints, and debugging (Xdebug)."
+description: "Use for WordPress Playground workflows: fast disposable WP instances in the browser or locally via @wp-playground/cli (server, run-blueprint, build-snapshot), auto-mounting plugins/themes, switching WP/PHP versions, blueprints, PHPUnit testing, E2E Playwright testing, programmatic runCLI API, and debugging (Xdebug)."
 license: GPL-2.0-or-later
 compatibility: "Targets WordPress 6.9+ (PHP 7.2.24+). Playground CLI requires Node.js 20.18+; runs WP in WebAssembly with SQLite."
 ---
@@ -14,6 +14,9 @@ compatibility: "Targets WordPress 6.9+ (PHP 7.2.24+). Playground CLI requires No
 - Build a reproducible snapshot of a site for sharing or CI.
 - Switch WP/PHP versions quickly to reproduce issues.
 - Debug plugin/theme code with Xdebug in an isolated Playground.
+- Run PHPUnit tests without a local database (no Docker, no MySQL).
+- Write E2E Playwright tests against a real WordPress instance.
+- Automate Playground in CI/CD pipelines via the programmatic `runCLI` API.
 
 ## Inputs required
 
@@ -81,6 +84,134 @@ npx @wp-playground/cli@latest build-snapshot --blueprint=<file> --outfile=./site
   - Fragment: `https://playground.wordpress.net/#<base64-or-json-blueprint>`
   - Query: `https://playground.wordpress.net/?blueprint-url=<public-url-or-zip>`
 - Use the live Blueprint Editor (playground.wordpress.net) to author blueprints with schema help; paste JSON and copy a shareable link.
+
+### 8) PHPUnit testing (no database required)
+
+Run PHPUnit inside Playground — every run starts with a clean WordPress install, fully isolated.
+
+Plugin:
+```bash
+npx @wp-playground/cli@latest php \
+  --auto-mount \
+  -- \
+  /wordpress/wp-content/plugins/MY_PLUGIN/vendor/bin/phpunit \
+  -c /wordpress/wp-content/plugins/MY_PLUGIN/phpunit.xml.dist
+```
+
+Theme (replace `plugins/` with `themes/`):
+```bash
+npx @wp-playground/cli@latest php \
+  --auto-mount \
+  -- \
+  /wordpress/wp-content/themes/MY_THEME/vendor/bin/phpunit \
+  -c /wordpress/wp-content/themes/MY_THEME/phpunit.xml.dist
+```
+
+- Requires PHPUnit installed via Composer in the project (`composer require --dev phpunit/phpunit`).
+- `--auto-mount` maps the current directory to the correct WP content path automatically.
+- Use `--php=8.1 --wp=6.5` flags to test against specific versions (PHP 7.4–8.5 supported).
+- Explicit mount: `--mount=.:/wordpress/wp-content/plugins/MY_PLUGIN`.
+
+### 9) E2E testing with Playwright
+
+Use `runCLI` from `@wp-playground/cli` to start a Playground server programmatically in Playwright tests. No Docker, no database.
+
+Install:
+```bash
+npm install --save-dev @playwright/test @wp-playground/cli
+npx playwright install chromium
+```
+
+Minimal `playwright.config.ts`:
+```ts
+import { defineConfig } from '@playwright/test';
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: false,
+  workers: 1,           // prevent port conflicts
+  timeout: 120_000,     // WP boot takes time
+  expect: { timeout: 30_000 },
+  use: { screenshot: 'only-on-failure', trace: 'on-first-retry' },
+});
+```
+
+First test (`tests/e2e/plugin.spec.ts`):
+```ts
+import { test, expect } from '@playwright/test';
+import { runCLI } from '@wp-playground/cli';
+
+let cli: Awaited<ReturnType<typeof runCLI>>;
+
+test.beforeAll(async () => {
+  cli = await runCLI({
+    command: 'server',
+    blueprint: {
+      preferredVersions: { php: '8.3', wp: 'latest' },
+      login: true,
+    },
+  });
+});
+
+test.afterAll(async () => { await cli?.server?.close(); });
+
+test('dashboard loads', async ({ page }) => {
+  await page.goto(`${cli.serverUrl}/wp-admin/`);
+  await expect(page.locator('#wpbody-content')).toBeVisible();
+});
+```
+
+Mount a local plugin:
+```ts
+cli = await runCLI({
+  command: 'server',
+  mount: { './': '/wordpress/wp-content/plugins/my-plugin' },
+  blueprint: {
+    preferredVersions: { php: '8.3', wp: 'latest' },
+    login: true,
+    steps: [{ step: 'activatePlugin', pluginPath: 'my-plugin/my-plugin.php' }],
+  },
+});
+```
+
+Locator priority (most to least preferred):
+1. `page.getByRole()` — buttons, headings, links, inputs
+2. `page.getByLabel()` — labeled form fields
+3. `page.getByText()` — visible text
+4. `page.getByTestId()` — your own `data-testid` attributes
+5. `page.locator()` — CSS/XPath last resort (WP core layout elements like `#wpadminbar`)
+
+Version matrix pattern:
+```ts
+const matrix = [{ php: '8.1', wp: '6.5' }, { php: '8.3', wp: 'latest' }];
+for (const { php, wp } of matrix) {
+  test.describe(`PHP ${php} + WP ${wp}`, () => {
+    // ... beforeAll/afterAll with those versions
+  });
+}
+```
+
+CI (GitHub Actions): see `references/e2e-playwright.md`.
+
+### 10) Programmatic `runCLI` API (scripts / Vitest integration)
+
+```ts
+import { runCLI } from '@wp-playground/cli';
+
+const server = await runCLI({
+  command: 'server',
+  php: '8.3',
+  wp: 'latest',
+  login: true,
+  mount: [{ hostPath: './my-plugin', vfsPath: '/wordpress/wp-content/plugins/my-plugin' }],
+  blueprint: { steps: [{ step: 'activatePlugin', pluginPath: 'my-plugin/plugin.php' }] },
+});
+
+// server.serverUrl — the base URL
+// server.server — the HTTP server instance (call .close() in afterEach)
+// server[Symbol.asyncDispose]() — cleanup in Vitest afterEach
+```
+
+Use `wordpressInstallMode: 'do-not-attempt-installing'` + `skipSqliteSetup: true` when testing pure PHP with no WordPress overhead.
 
 ## Verification
 

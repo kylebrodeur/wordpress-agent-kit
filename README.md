@@ -2,11 +2,11 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.3.2-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
-**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 13 specialized WordPress agent skills, an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
+**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 17 specialized WordPress agent skills (plus an optional WP Engine skill), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
 
@@ -40,7 +40,7 @@ my-plugin/
 │   ├── instructions/
 │   │   └── wordpress-workflow.instructions.md
 │   ├── prompts/
-│   └── skills/                      # 17 WordPress skills
+│   └── skills/                      # 17 WordPress skills + 1 optional
 │       ├── wp-project-triage/       # Project detection
 │       ├── wp-plugin-development/   # Plugin architecture
 │       ├── wp-block-development/    # Gutenberg blocks
@@ -51,9 +51,10 @@ my-plugin/
 │       ├── wp-performance/          # Performance profiling
 │       ├── wp-phpstan/              # Static analysis
 │       ├── wp-wpcli-and-ops/        # WP-CLI operations
-│       ├── wp-playground/           # Testing environments
+│       ├── wp-playground/           # Testing environments (PHPUnit, Playwright, CI)
 │       ├── wpds/                    # Design system
-│       └── wordpress-router/        # Repo classification
+│       ├── wordpress-router/        # Repo classification
+│       └── wp-wpengine/             # (optional) WP Engine hosting + git push
 └── .wp-agent-kit-manifest.github.json  # Safe-update tracking
 ```
 
@@ -227,7 +228,7 @@ console.log(triage.data.project.primary); // "plugin"
 
 ## Skills Reference
 
-All 13 skills follow the [AgentSkills.io](https://agentskills.io) specification:
+All 17 skills follow the [AgentSkills.io](https://agentskills.io) specification. Skills in `skills-custom/` are project-specific (not from upstream) and survive `sync-skills`:
 
 | Skill | When to Use |
 |-------|------------|
@@ -243,10 +244,12 @@ All 13 skills follow the [AgentSkills.io](https://agentskills.io) specification:
 | `wp-performance` | Profile and optimize WordPress performance |
 | `wp-phpstan` | Configure and run PHPStan static analysis |
 | `wp-wpcli-and-ops` | WP-CLI commands, automation, multisite operations |
-| `wp-playground` | Test in disposable WordPress Playground instances |
+| `wp-playground` | Test with disposable Playground instances; PHPUnit, Playwright E2E, CI |
 | `blueprint` | Write and edit WordPress Playground blueprint JSON |
 | `wpds` | Build UIs with the WordPress Design System |
 | `wp-plugin-directory-guidelines` | GPL compliance, naming, slug rules for WP.org submission |
+| `wordpress-router` | Route/classify repository type and select appropriate skills |
+| **`wp-wpengine`** *(optional, custom)* | **WP Engine git push, install/domain/cache/backup management via wpe-labs skills** |
 
 ---
 

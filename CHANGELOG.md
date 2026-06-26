@@ -1,3 +1,16 @@
+## [0.4.0] - 2026-06-26
+
+### Added
+- **Custom skills system** (`skills-custom/`): A new directory for skills not from the WordPress/agent-skills upstream. `syncSkillsApi` now merges `skills-custom/` into `.github/skills/` after every upstream sync, so custom skills survive upstream updates.
+- **`wp-wpengine` skill** (`skills-custom/wp-wpengine/`): Optional skill covering WP Engine SSH-based git push, environment management via the `wpe-labs` Claude Code skills (account-usage, installs, domains, backups, cache, users, offload, monthly-report), and API credentials via 1Password.
+- **`wp-playground` skill — PHPUnit testing** (Step 8): Run PHPUnit inside Playground via `npx @wp-playground/cli@latest php --auto-mount`. No database or Docker required.
+- **`wp-playground` skill — E2E Playwright testing** (Step 9): Full setup guide for `@playwright/test` + `@wp-playground/cli` `runCLI`, including locator priority for WordPress admin, server lifecycle patterns (shared vs. per-test), and version matrix testing.
+- **`wp-playground` skill — programmatic `runCLI` API** (Step 10): Vitest integration pattern, `Symbol.asyncDispose` cleanup, `wordpressInstallMode: 'do-not-attempt-installing'` for pure PHP tests.
+- **`references/e2e-playwright.md`**: New reference doc covering Playwright config, fixtures, Page Object Model, GitHub Actions CI workflow, and troubleshooting.
+
+### Changed
+- `wp-playground` skill description updated to reflect PHPUnit, E2E, and CI capabilities.
+
 ## [0.3.2] - 2026-06-09
 
 ### Fixed
