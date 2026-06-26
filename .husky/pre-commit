@@ -1,7 +1,1 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-pnpm exec biome check --write .
-git add -A
-pnpm run lint:check
-pnpm run test:run
+pnpm exec biome check .

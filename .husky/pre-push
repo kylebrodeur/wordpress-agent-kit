@@ -1,0 +1,4 @@
+pnpm exec biome check .
+pnpm run check
+pnpm run test:run
+pnpm run build

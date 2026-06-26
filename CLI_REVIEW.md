@@ -58,6 +58,7 @@ wp-agent-kit install /nonexistent --json
 ```
 
 **Implementation**:
+
 - Add `--json` / `--output json` global flag in `cli.ts`
 - Create `OutputFormatter` utility: `json`, `human`, `quiet`
 - Return structured result objects from all command actions
@@ -65,18 +66,18 @@ wp-agent-kit install /nonexistent --json
 
 ### 2. Add Machine-Readable Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Invalid arguments / usage |
-| 3 | Target not found / ENOENT |
-| 4 | Permission denied / EACCES |
-| 5 | Already exists (without --force) |
-| 6 | Git/submodule error |
-| 7 | Network/fetch error |
-| 8 | Validation failed |
-| 130 | Cancelled (SIGINT) |
+| Code | Meaning                          |
+| ---- | -------------------------------- |
+| 0    | Success                          |
+| 1    | General error                    |
+| 2    | Invalid arguments / usage        |
+| 3    | Target not found / ENOENT        |
+| 4    | Permission denied / EACCES       |
+| 5    | Already exists (without --force) |
+| 6    | Git/submodule error              |
+| 7    | Network/fetch error              |
+| 8    | Validation failed                |
+| 130  | Cancelled (SIGINT)               |
 
 ### 3. Extract Programmatic API
 
@@ -108,6 +109,7 @@ export async function configureAgentsMd(options: ConfigureOptions): Promise<Conf
 ```
 
 **Benefits**:
+
 - Agents can import and call directly: `import { installKit } from 'wordpress-agent-kit'`
 - No subprocess overhead
 - Full TypeScript types
@@ -187,16 +189,16 @@ wp-agent-kit --version --json
 
 ## Priority Matrix
 
-| Priority | Feature | Effort | Impact |
-|----------|---------|--------|--------|
-| **P0** | JSON output (`--json`) | Low | High |
-| **P0** | Semantic exit codes | Low | High |
-| **P0** | Programmatic API export | Medium | High |
-| **P1** | Headless `setup` mode | Medium | High |
-| **P1** | Dry-run/preview | Low | Medium |
-| **P2** | NDJSON event streaming | Medium | Medium |
-| **P2** | Shell completions | Low | Medium |
-| **P3** | Man page generation | Low | Low |
+| Priority | Feature                 | Effort | Impact |
+| -------- | ----------------------- | ------ | ------ |
+| **P0**   | JSON output (`--json`)  | Low    | High   |
+| **P0**   | Semantic exit codes     | Low    | High   |
+| **P0**   | Programmatic API export | Medium | High   |
+| **P1**   | Headless `setup` mode   | Medium | High   |
+| **P1**   | Dry-run/preview         | Low    | Medium |
+| **P2**   | NDJSON event streaming  | Medium | Medium |
+| **P2**   | Shell completions       | Low    | Medium |
+| **P3**   | Man page generation     | Low    | Low    |
 
 ---
 
@@ -223,7 +225,7 @@ wp-agent-kit install /workspace/my-plugin --platform cursor --json
 ### Minimal Changes for P0
 
 1. **cli.ts**: Add global `--json` flag, result formatter
-2. **commands/*.ts**: Return structured results instead of `process.exit()`
+2. **commands/\*.ts**: Return structured results instead of `process.exit()`
 3. **lib/installer.ts**: Return `InstallResult` object (already close)
 4. **package.json**: Add `"exports": { ".": "./dist/cli.js", "./api": "./dist/api.js" }`
 

@@ -6,7 +6,15 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts", "extensions/**/*.ts"],
+		"include": ["src/**", "tests/**", "scripts/**", "extensions/**", "*.json", "*.mjs"],
+		"ignore": [
+			"**/dist/**",
+			"**/node_modules/**",
+			"**/coverage/**",
+			"**/.agents/**",
+			"**/skills-custom/**",
+			"**/vendor/**"
+		],
 		"ignoreUnknown": true
 	},
 	"organizeImports": {
@@ -21,6 +29,9 @@
 			},
 			"correctness": {
 				"noUnusedVariables": "error"
+			},
+			"complexity": {
+				"noUselessTernary": "error"
 			}
 		}
 	},

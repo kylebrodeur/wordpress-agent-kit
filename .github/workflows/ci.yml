@@ -6,21 +6,23 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-and-test:
+  full-check:
+    name: Full check (mirrors pre-push hook)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -28,17 +30,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check formatting
-        run: pnpm run format:check
+      - name: Biome — lint + format check
+        run: pnpm exec biome ci .
 
-      - name: Run lint
-        run: pnpm run lint:check
-
-      - name: Type check
+      - name: TypeScript — type check
         run: pnpm run check
 
-      - name: Run tests
+      - name: Tests
         run: pnpm run test:run
 
       - name: Build
         run: pnpm run build
+
+      - name: Verify build outputs
+        run: |
+          test -f dist/cli.js     || (echo "❌ dist/cli.js missing"     && exit 1)
+          test -f dist/lib/api.js || (echo "❌ dist/lib/api.js missing" && exit 1)
+          echo "✅ Build outputs verified"

@@ -30,6 +30,7 @@ node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
 ```
 
 **What gets installed:**
+
 ```
 my-plugin/
 ├── AGENTS.md                  # Project-specific agent instructions
@@ -80,6 +81,7 @@ npx wp-agent-kit setup /path/to/existing-plugin \
 ```
 
 **Key behavior:**
+
 - Your existing `AGENTS.md` is **never overwritten** — only new sections are added
 - Triage inspects your codebase and returns structured JSON with project kind, signals, and tooling
 - Setup updates only the tooling/configuration sections of AGENTS.md
@@ -98,6 +100,7 @@ npx wp-agent-kit upgrade --force
 ```
 
 **Safe update behavior:**
+
 - Compares installed files against a manifest of original hashes
 - Files you haven't modified → automatically updated
 - Files you modified → **skipped** (preserved)
@@ -115,32 +118,32 @@ npx wp-agent-kit install --no-safe --force
 
 ### CLI Commands
 
-| Command | Purpose |
-|---------|---------|
-| `install [dir]` | Install kit into a project |
-| `setup [dir]` | Interactive or headless configuration |
+| Command             | Purpose                                        |
+| ------------------- | ---------------------------------------------- |
+| `install [dir]`     | Install kit into a project                     |
+| `setup [dir]`       | Interactive or headless configuration          |
 | `sync-skills [ref]` | Pull latest skills from WordPress/agent-skills |
-| `upgrade [dir]` | Check or apply version upgrades |
-| `playground` | Launch local WordPress Playground |
+| `upgrade [dir]`     | Check or apply version upgrades                |
+| `playground`        | Launch local WordPress Playground              |
 
 ### Platform Flags
 
-| Platform | Flag | Target Directory |
-|----------|------|-----------------|
-| GitHub Copilot / VS Code | `--platform github` | `.github/` |
-| Cursor IDE | `--platform cursor` | `.cursor/` |
-| Claude Code | `--platform claude` | `.claude/` |
-| Pi Coding Agent | `--platform pi` | `.pi/agent/` |
-| Generic .agent | `--platform agent` | `.agent/` |
+| Platform                 | Flag                | Target Directory |
+| ------------------------ | ------------------- | ---------------- |
+| GitHub Copilot / VS Code | `--platform github` | `.github/`       |
+| Cursor IDE               | `--platform cursor` | `.cursor/`       |
+| Claude Code              | `--platform claude` | `.claude/`       |
+| Pi Coding Agent          | `--platform pi`     | `.pi/agent/`     |
+| Generic .agent           | `--platform agent`  | `.agent/`        |
 
 ### Agent-Friendly Flags (All Commands)
 
-| Flag | Description |
-|------|-------------|
-| `--json` | Machine-readable JSON output |
-| `--dry-run` | Preview changes without applying |
-| `--ndjson` | Newline-delimited JSON for streaming |
-| `--quiet` | Suppress non-error output |
+| Flag        | Description                          |
+| ----------- | ------------------------------------ |
+| `--json`    | Machine-readable JSON output         |
+| `--dry-run` | Preview changes without applying     |
+| `--ndjson`  | Newline-delimited JSON for streaming |
+| `--quiet`   | Suppress non-error output            |
 
 ---
 
@@ -154,21 +157,21 @@ pi install npm:wordpress-agent-kit
 
 ### Pi Tools (Callable by the Agent)
 
-| Tool | What it does |
-|------|-------------|
-| `wp_triage` | Detect WordPress project type, signals, and tooling |
+| Tool             | What it does                                        |
+| ---------------- | --------------------------------------------------- |
+| `wp_triage`      | Detect WordPress project type, signals, and tooling |
 | `wp_install_kit` | Install/update kit into a project (safe by default) |
-| `wp_sync_skills` | Sync skills from WordPress/agent-skills upstream |
-| `wp_upgrade` | Check and apply version upgrades |
+| `wp_sync_skills` | Sync skills from WordPress/agent-skills upstream    |
+| `wp_upgrade`     | Check and apply version upgrades                    |
 
 ### Pi Commands (Type `/` in Pi TUI)
 
-| Command | What it does |
-|---------|-------------|
-| `/wp-triage [dir]` | Run project detection, show in status bar |
-| `/wp-install [dir]` | Install kit into current project |
-| `/wp-sync-skills [ref]` | Sync skills from upstream |
-| `/wp-upgrade` | Show installed vs latest version |
+| Command                 | What it does                              |
+| ----------------------- | ----------------------------------------- |
+| `/wp-triage [dir]`      | Run project detection, show in status bar |
+| `/wp-install [dir]`     | Install kit into current project          |
+| `/wp-sync-skills [ref]` | Sync skills from upstream                 |
+| `/wp-upgrade`           | Show installed vs latest version          |
 
 ---
 
@@ -178,24 +181,24 @@ Import directly into scripts, tests, or other tools:
 
 ```typescript
 import {
-  installKitApi,         // Install/update kit
-  syncSkillsApi,         // Sync skills from upstream
-  runTriageApi,          // Run project detection
-  configureAgentsMdApi,  // Configure AGENTS.md
-  computeChanges,        // Preview file changes (dry-run)
-  isKitInstalled,        // Check if kit is installed
-  loadManifest,          // Read install manifest
-  updateKit,             // Raw safe update
-  ExitCode,              // Semantic exit codes
+  installKitApi, // Install/update kit
+  syncSkillsApi, // Sync skills from upstream
+  runTriageApi, // Run project detection
+  configureAgentsMdApi, // Configure AGENTS.md
+  computeChanges, // Preview file changes (dry-run)
+  isKitInstalled, // Check if kit is installed
+  loadManifest, // Read install manifest
+  updateKit, // Raw safe update
+  ExitCode, // Semantic exit codes
 } from 'wordpress-agent-kit/api';
 
 // Install with safe update
 const result = await installKitApi({
   targetDir: '/path/to/my-plugin',
   platform: 'github',
-  safe: true,     // Use manifest-based diff
-  backup: true,   // Create backup before changes
-  force: false,   // Don't overwrite user mods
+  safe: true, // Use manifest-based diff
+  backup: true, // Create backup before changes
+  force: false, // Don't overwrite user mods
 });
 
 // Dry-run preview
@@ -213,17 +216,17 @@ console.log(triage.data.project.primary); // "plugin"
 
 ### Semantic Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 2 | Invalid arguments |
-| 3 | Not found |
-| 4 | Permission denied |
-| 5 | Already exists |
-| 6 | Git error |
-| 7 | Network error |
-| 8 | Validation failed |
-| 130 | Cancelled |
+| Code | Meaning           |
+| ---- | ----------------- |
+| 0    | Success           |
+| 2    | Invalid arguments |
+| 3    | Not found         |
+| 4    | Permission denied |
+| 5    | Already exists    |
+| 6    | Git error         |
+| 7    | Network error     |
+| 8    | Validation failed |
+| 130  | Cancelled         |
 
 ---
 
@@ -231,26 +234,26 @@ console.log(triage.data.project.primary); // "plugin"
 
 All 18 skills follow the [AgentSkills.io](https://agentskills.io) specification. Skills in `skills-custom/` are project-specific (not from upstream) and survive `sync-skills`:
 
-| Skill | When to Use |
-|-------|------------|
-| `wp-project-triage` | Run deterministic project detection (type, tooling, versions) |
-| `wp-plugin-development` | Develop WordPress plugins (hooks, settings, security, release) |
-| `wp-block-development` | Develop Gutenberg blocks (block.json, attributes, rendering) |
-| `wp-block-themes` | Develop block themes (theme.json, templates, patterns, variations) |
-| `wp-rest-api` | Build, extend, or debug REST API endpoints/routes |
-| `wp-interactivity-api` | Build Interactive blocks with data-wp-* directives |
-| `wp-abilities-api` | Register and consume WordPress Abilities API |
-| `wp-abilities-audit` | Audit a plugin's REST surface for Abilities API opportunities |
-| `wp-abilities-verify` | Verify registered Abilities match their annotations |
-| `wp-performance` | Profile and optimize WordPress performance |
-| `wp-phpstan` | Configure and run PHPStan static analysis |
-| `wp-wpcli-and-ops` | WP-CLI commands, automation, multisite operations |
-| `wp-playground` | Test with disposable Playground instances; PHPUnit, Playwright E2E, CI |
-| `blueprint` | Write and edit WordPress Playground blueprint JSON |
-| `wpds` | Build UIs with the WordPress Design System |
-| `wp-plugin-directory-guidelines` | GPL compliance, naming, slug rules for WP.org submission |
-| `wordpress-router` | Route/classify repository type and select appropriate skills |
-| **`wp-wpengine`** *(optional, custom)* | **WP Engine git push, install/domain/cache/backup management via wpe-labs skills** |
+| Skill                                  | When to Use                                                                        |
+| -------------------------------------- | ---------------------------------------------------------------------------------- |
+| `wp-project-triage`                    | Run deterministic project detection (type, tooling, versions)                      |
+| `wp-plugin-development`                | Develop WordPress plugins (hooks, settings, security, release)                     |
+| `wp-block-development`                 | Develop Gutenberg blocks (block.json, attributes, rendering)                       |
+| `wp-block-themes`                      | Develop block themes (theme.json, templates, patterns, variations)                 |
+| `wp-rest-api`                          | Build, extend, or debug REST API endpoints/routes                                  |
+| `wp-interactivity-api`                 | Build Interactive blocks with data-wp-\* directives                                |
+| `wp-abilities-api`                     | Register and consume WordPress Abilities API                                       |
+| `wp-abilities-audit`                   | Audit a plugin's REST surface for Abilities API opportunities                      |
+| `wp-abilities-verify`                  | Verify registered Abilities match their annotations                                |
+| `wp-performance`                       | Profile and optimize WordPress performance                                         |
+| `wp-phpstan`                           | Configure and run PHPStan static analysis                                          |
+| `wp-wpcli-and-ops`                     | WP-CLI commands, automation, multisite operations                                  |
+| `wp-playground`                        | Test with disposable Playground instances; PHPUnit, Playwright E2E, CI             |
+| `blueprint`                            | Write and edit WordPress Playground blueprint JSON                                 |
+| `wpds`                                 | Build UIs with the WordPress Design System                                         |
+| `wp-plugin-directory-guidelines`       | GPL compliance, naming, slug rules for WP.org submission                           |
+| `wordpress-router`                     | Route/classify repository type and select appropriate skills                       |
+| **`wp-wpengine`** _(optional, custom)_ | **WP Engine git push, install/domain/cache/backup management via wpe-labs skills** |
 
 ---
 

@@ -21,11 +21,13 @@ Use this skill when the task involves WordPress operational work via WP-CLI, inc
 
 ## Inputs required
 
-- Where WP-CLI will run (local dev, staging, production) and whether it’s safe to run.
+- Where WP-CLI will run (local dev, staging, production) and whether it's safe to run.
 - How to target the correct site root:
   - `--path=<wordpress-root>` and (multisite) `--url=<site-url>`
 - Whether this is multisite and whether commands should run network-wide.
 - Any constraints (no downtime, no DB writes, maintenance window).
+
+> **Running on WP Engine?** Use the `wp-wpengine` skill for SSH gateway setup, the `--ssh` flag, and `wp-cli.yml` remote aliases for WP Engine installs. Return here for the WP-CLI operation patterns themselves.
 
 ## Procedure
 
@@ -34,7 +36,7 @@ Use this skill when the task involves WordPress operational work via WP-CLI, inc
 WP-CLI commands can be destructive. Before running anything that writes:
 
 1. Confirm environment (dev/staging/prod).
-2. Confirm targeting (path/url) so you don’t hit the wrong site.
+2. Confirm targeting (path/url) so you don't hit the wrong site.
 3. Make a backup when performing risky operations.
 
 Read:
@@ -46,7 +48,7 @@ Run the inspector:
 
 - `node skills/wp-wpcli-and-ops/scripts/wpcli_inspect.mjs --path=<path> [--url=<url>]`
 
-If WP-CLI isn’t available, fall back to installing it via the project’s documented tooling (Composer, container, or system package), or ask for the expected execution environment.
+If WP-CLI isn't available, fall back to installing it via the project's documented tooling (Composer, container, or system package), or ask for the expected execution environment.
 
 ### 2) Choose the right workflow
 
@@ -64,21 +66,21 @@ Read:
 
 #### B) Plugin/theme operations
 
-Use `wp plugin *` / `wp theme *` and confirm you’re acting on the intended site (and network) first.
+Use `wp plugin *` / `wp theme *` and confirm you're acting on the intended site (and network) first.
 
 Read:
 - `references/packages-and-updates.md`
 
 #### C) Cron and queues
 
-Inspect cron state and run individual events for debugging rather than “run everything blindly”.
+Inspect cron state and run individual events for debugging rather than "run everything blindly".
 
 Read:
 - `references/cron-and-cache.md`
 
 #### D) Multisite operations
 
-Multisite changes can affect many sites. Always decide whether you’re operating:
+Multisite changes can affect many sites. Always decide whether you're operating:
 
 - on a single site (`--url=`), or
 - network-wide (`--network` / iterating sites)
@@ -104,11 +106,11 @@ Read:
   - correct URLs updated
   - plugins/themes in expected state
   - cron/caches flushed where needed
-- If there’s a health check endpoint or smoke test suite, run it after ops changes.
+- If there's a health check endpoint or smoke test suite, run it after ops changes.
 
 ## Failure modes / debugging
 
-- “Error: This does not seem to be a WordPress installation.”
+- "Error: This does not seem to be a WordPress installation."
   - wrong `--path`, wrong container, or missing `wp-config.php`
 - Multisite commands affecting the wrong site
   - missing `--url` or wrong URL
@@ -121,4 +123,4 @@ See:
 ## Escalation
 
 - If you cannot confirm environment safety, do not run write operations.
-- If the repo uses containerized tooling (Docker/wp-env) but you can’t access it, ask for the intended command runner or CI job.
+- If the repo uses containerized tooling (Docker/wp-env) but you can't access it, ask for the intended command runner or CI job.

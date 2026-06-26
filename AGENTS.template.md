@@ -11,9 +11,11 @@ This repository is WordPress-centric (plugin, theme, block theme, or site). Agen
 ## Project Discovery (Required Before Changes)
 
 1. **Run project triage** to classify the codebase:
+
    ```bash
    node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
    ```
+
    This outputs a JSON report with project kind, signals, and tooling.
 
 2. **Route to the right skill**:
@@ -51,13 +53,13 @@ This repository is WordPress-centric (plugin, theme, block theme, or site). Agen
 
 <!-- Populated by project triage — do not remove -->
 
-| Purpose | Command |
-|---------|---------|
-| Build | <!-- e.g., npm run build --> |
-| Lint (PHP) | <!-- e.g., composer lint --> |
-| Lint (JS/CSS) | <!-- e.g., npm run lint --> |
-| Test | <!-- e.g., npm test, composer test --> |
-| Dev server | <!-- e.g., npm start --> |
+| Purpose       | Command                                |
+| ------------- | -------------------------------------- |
+| Build         | <!-- e.g., npm run build -->           |
+| Lint (PHP)    | <!-- e.g., composer lint -->           |
+| Lint (JS/CSS) | <!-- e.g., npm run lint -->            |
+| Test          | <!-- e.g., npm test, composer test --> |
+| Dev server    | <!-- e.g., npm start -->               |
 
 ## Code Conventions
 

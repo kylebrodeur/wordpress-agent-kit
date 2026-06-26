@@ -1,28 +1,28 @@
 {
-  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "meta": {
-    "title": "WordPress Agent Kit Playground",
-    "description": "Minimal reusable playground blueprint for validating WordPress and local workflow setup."
-  },
-  "preferredVersions": {
-    "php": "8.2",
-    "wp": "latest"
-  },
-  "landingPage": "/playground-ready/",
-  "steps": [
-    {
-      "step": "runWpInstallationWizard",
-      "options": {
-        "adminUsername": "admin",
-        "adminPassword": "password"
-      }
-    },
-    {
-      "step": "runPHP",
-      "code": {
-        "filename": "seed-playground-ready-page.php",
-        "content": "<?php\n\nupdate_option('permalink_structure', '/%postname%/');\nflush_rewrite_rules();\n\n$page_slug = 'playground-ready';\n$page_title = 'Playground Ready';\n$page_content = 'WordPress Playground is running. You can now test plugins, themes, and instructions from this kit.';\n\n$existing = get_page_by_path($page_slug, OBJECT, 'page');\n\n$page_data = array(\n    'post_type'    => 'page',\n    'post_status'  => 'publish',\n    'post_title'   => $page_title,\n    'post_name'    => $page_slug,\n    'post_content' => $page_content,\n);\n\nif ($existing && isset($existing->ID)) {\n    $page_data['ID'] = (int) $existing->ID;\n    wp_update_post($page_data);\n} else {\n    wp_insert_post($page_data);\n}\n"
-      }
-    }
-  ]
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"meta": {
+		"title": "WordPress Agent Kit Playground",
+		"description": "Minimal reusable playground blueprint for validating WordPress and local workflow setup."
+	},
+	"preferredVersions": {
+		"php": "8.2",
+		"wp": "latest"
+	},
+	"landingPage": "/playground-ready/",
+	"steps": [
+		{
+			"step": "runWpInstallationWizard",
+			"options": {
+				"adminUsername": "admin",
+				"adminPassword": "password"
+			}
+		},
+		{
+			"step": "runPHP",
+			"code": {
+				"filename": "seed-playground-ready-page.php",
+				"content": "<?php\n\nupdate_option('permalink_structure', '/%postname%/');\nflush_rewrite_rules();\n\n$page_slug = 'playground-ready';\n$page_title = 'Playground Ready';\n$page_content = 'WordPress Playground is running. You can now test plugins, themes, and instructions from this kit.';\n\n$existing = get_page_by_path($page_slug, OBJECT, 'page');\n\n$page_data = array(\n    'post_type'    => 'page',\n    'post_status'  => 'publish',\n    'post_title'   => $page_title,\n    'post_name'    => $page_slug,\n    'post_content' => $page_content,\n);\n\nif ($existing && isset($existing->ID)) {\n    $page_data['ID'] = (int) $existing->ID;\n    wp_update_post($page_data);\n} else {\n    wp_insert_post($page_data);\n}\n"
+			}
+		}
+	]
 }

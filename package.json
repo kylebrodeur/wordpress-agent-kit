@@ -1,85 +1,77 @@
 {
-  "name": "wordpress-agent-kit",
-  "version": "0.5.0",
-  "description": "WordPress-focused AGENTS.md + Agent Skills starter kit for AI coding agents.",
-  "license": "GPL-2.0-or-later",
-  "author": "Kyle Brodeur <kyle@brodeur.me> (https://brodeur.me)",
-  "homepage": "https://brodeur.me",
-  "private": false,
-  "type": "module",
-  "keywords": [
-    "wordpress",
-    "agents",
-    "agents-md",
-    "agent-skills",
-    "ai-coding",
-    "copilot",
-    "pi-package"
-  ],
-  "engines": {
-    "node": ">=20.18"
-  },
-  "bin": {
-    "wp-agent-kit": "dist/cli.js"
-  },
-  "exports": {
-    ".": "./dist/cli.js",
-    "./api": "./dist/lib/api.js"
-  },
-  "pi": {
-    "extensions": [
-      "./extensions/wp-agent-kit"
-    ],
-    "skills": [
-      "./.agents/skills"
-    ]
-  },
-  "scripts": {
-    "dev": "tsx src/cli.ts",
-    "build": "tsc",
-    "check": "tsc --noEmit",
-    "lint": "eslint src/ tests/ --fix && biome check --write .",
-    "lint:check": "eslint src/ tests/ && biome check .",
-    "format": "prettier --write . && biome format --write .",
-    "format:check": "prettier --check . && biome format --check .",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "prepare": "husky",
-    "prepublishOnly": "pnpm run build && pnpm run lint:check && pnpm run test:run",
-    "install:kit": "tsx src/cli.ts install",
-    "sync:skills": "tsx src/cli.ts sync-skills",
-    "setup": "tsx src/cli.ts setup",
-    "playground": "tsx src/cli.ts playground",
-    "build:bundles": "tsx scripts/build-bundles.ts"
-  },
-  "dependencies": {
-    "@clack/prompts": "^0.8.2",
-    "commander": "^13.0.0"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "typebox": "*"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@eslint/js": "^9.17.0",
-    "@types/node": "^22.10.1",
-    "@vitest/coverage-v8": "^2.1.8",
-    "eslint": "^9.16.0",
-    "husky": "^9.1.6",
-    "prettier": "^3.4.1",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.0",
-    "vitest": "^2.1.8",
-    "@earendil-works/pi-coding-agent": "^0.78.1",
-    "typebox": "*"
-  },
-  "pnpm": {
-    "overrides": {
-      "fast-xml-parser": ">=5.7.0"
-    }
-  }
+	"name": "wordpress-agent-kit",
+	"version": "0.5.0",
+	"description": "WordPress-focused AGENTS.md + Agent Skills starter kit for AI coding agents.",
+	"license": "GPL-2.0-or-later",
+	"author": "Kyle Brodeur <kyle@brodeur.me> (https://brodeur.me)",
+	"homepage": "https://brodeur.me",
+	"private": false,
+	"type": "module",
+	"keywords": [
+		"wordpress",
+		"agents",
+		"agents-md",
+		"agent-skills",
+		"ai-coding",
+		"copilot",
+		"pi-package"
+	],
+	"engines": {
+		"node": ">=20.18"
+	},
+	"bin": {
+		"wp-agent-kit": "dist/cli.js"
+	},
+	"exports": {
+		".": "./dist/cli.js",
+		"./api": "./dist/lib/api.js"
+	},
+	"pi": {
+		"extensions": ["./extensions/wp-agent-kit"],
+		"skills": ["./.agents/skills"]
+	},
+	"scripts": {
+		"dev": "tsx src/cli.ts",
+		"build": "tsc",
+		"check": "tsc --noEmit",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"prepare": "husky",
+		"install:kit": "tsx src/cli.ts install",
+		"sync:skills": "tsx src/cli.ts sync-skills",
+		"setup": "tsx src/cli.ts setup",
+		"playground": "tsx src/cli.ts playground",
+		"build:bundles": "tsx scripts/build-bundles.ts",
+		"lint": "biome check --write .",
+		"lint:check": "biome check .",
+		"format": "biome format --write .",
+		"format:check": "biome format --check .",
+		"prepublishOnly": "pnpm run build && pnpm run lint:check && pnpm run test:run"
+	},
+	"dependencies": {
+		"@clack/prompts": "^0.8.2",
+		"commander": "^13.0.0"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"typebox": "*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@earendil-works/pi-coding-agent": "^0.78.1",
+		"@types/node": "^22.10.1",
+		"@vitest/coverage-v8": "^2.1.8",
+		"husky": "^9.1.6",
+		"ts-node": "^10.9.2",
+		"tsx": "^4.19.2",
+		"typebox": "*",
+		"typescript": "^5.7.2",
+		"vitest": "^2.1.8"
+	},
+	"pnpm": {
+		"overrides": {
+			"fast-xml-parser": ">=5.7.0"
+		}
+	}
 }

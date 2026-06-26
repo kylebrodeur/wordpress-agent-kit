@@ -13,12 +13,14 @@
 ## Installation
 
 **CLI (recommended):**
+
 ```bash
 pnpm dlx wp-agent-kit setup
 ```
 
 **Direct Bundle Download:**
 Download one of the pre-built bundles from the release assets:
+
 - `wordpress-agent-kit-github.tar.gz` - For GitHub Copilot
 - `wordpress-agent-kit-claude.tar.gz` - For Claude Code
 - `wordpress-agent-kit-agent.tar.gz` - For generic .agent workflows
