@@ -1,28 +1,37 @@
-# Exclude source files and tests
+# Source and tests (dist/ is what ships)
 src/
 tests/
 scripts/
 playground/
 
-# Exclude build artifacts not needed at runtime
+# Build artifacts not needed at runtime
 dist/bundles/
 dist/*.tar.gz
 
-# Exclude internal tooling and config
+# Dev tooling config (consumers don't need these)
+biome.json
+tsconfig.json
+vitest.config.ts
+
+# Git hooks
+.husky/
+
+# CI workflows (but NOT .github/agents/ or .github/instructions/ — those get installed)
+.github/workflows/
+
+# Internal docs
+CLI_REVIEW.md
+CHANGELOG.md
+RELEASE_NOTES.md
+
+# Personal / machine-specific
 .pi/
 .vscode/
+.gitignore
+
+# Dependency artifacts
 vendor/
 coverage/
 node_modules/
 pnpm-lock.yaml
 package-lock.json
-
-# Exclude development config files
-tsconfig.json
-vitest.config.ts
-eslint.config.mjs
-.prettierrc
-
-# Exclude documentation not needed for runtime
-CHANGELOG.md
-RELEASE_NOTES.md

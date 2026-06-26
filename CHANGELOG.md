@@ -1,3 +1,41 @@
+## [0.5.1] - 2026-06-27
+
+### Added
+- **`wp-wpengine` skill — WP-CLI via SSH gateway**: New comprehensive section covering three
+  methods (direct SSH, `--ssh` flag, `wp-cli.yml` aliases), common operations (cache flush,
+  plugin management, DB export, search-replace, cron), and `wp-cli.yml` alias setup.
+- **`wp-wpengine` skill — GitHub Actions CI/CD pipeline**: Full branch-gated deploy workflow
+  with `develop` → dev, `staging` → staging, `main` → production. Safety escalation table
+  by environment. Reference: `references/github-actions-deploy.md`.
+- **`wp-wpengine` skill — CI gate**: Two-gate model (PHP + JS/TS parallel jobs) that makes
+  `--no-verify` irrelevant — CI re-runs every check regardless. `gate-passed` summary job
+  as the single branch-protection required check. Reference: `references/ci-gate.md`.
+- **Agent-runnable scripts** in `wp-wpengine/scripts/`:
+  - `ci-gate.sh` — run the full PHP + JS/TS gate locally before pushing (`--php-only` / `--js-only`)
+  - `wpe-preflight.sh` — pre-deploy sanity check: SSH, WP-CLI, siteurl/home, HTTP health, REST API
+  - `wpe-check.sh` — SSH connectivity diagnostic, reads installs from `wp-cli.yml` `@aliases`
+- **`wp-wpcli-and-ops` skill**: Cross-reference note pointing to `wp-wpengine` for remote SSH on WP Engine.
+
+### Fixed
+- **`wp-wpengine` remote URL format**: WP Engine requires an environment prefix.
+  Correct: `git@git.wpengine.com:production/<install>.git`. Previous form
+  (`git@git.wpengine.com:<install>.git`) is an older format that may no longer work.
+  All `git remote add` commands updated; SKILL.md now directs users to the portal URL.
+- **`wp-wpengine` `ssh-keyscan`**: Added `-t rsa` flag for `git.wpengine.com` —
+  WP Engine's git push host serves RSA keys; all real-world CI implementations specify
+  `-t rsa` explicitly.
+- **Key type note**: RSA 4096-bit is the proven key type for WP Engine git push.
+  Ed25519 is supported on current infrastructure but RSA is recommended for new setups.
+
+### Changed
+- **Dev tooling**: Dropped ESLint and Prettier; Biome is now the sole linter + formatter
+  for this project. Eliminates the Prettier (spaces) vs Biome (tabs) conflict. Pre-commit
+  runs `biome check` only; pre-push runs the full gate (`biome + tsc + vitest + build`).
+  CI uses `biome ci` (strict mode).
+- **`.npmignore`**: Removed stale ESLint/Prettier references; added `biome.json`, `.husky/`,
+  `.github/workflows/` (CI configs excluded, but `.github/agents/` and `.github/instructions/`
+  remain included as they are installed into user projects).
+
 ## [0.5.0] - 2026-06-27
 
 ### Added
