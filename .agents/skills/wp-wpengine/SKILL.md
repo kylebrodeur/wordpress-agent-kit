@@ -19,6 +19,9 @@ optional: true
 ## Prerequisites
 
 - SSH key stored in 1Password (`Employee` vault, item `wpengine_ed25519`).
+  > **Key type note:** RSA 4096-bit is the historically proven key type for WP Engine git push.
+  > Ed25519 is more modern and works on current WP Engine infrastructure, but if you're
+  > setting up a new key, RSA 4096 is the safest choice: `ssh-keygen -t rsa -b 4096 -f ~/.ssh/wpengine_rsa`
 - SSH key registered in the WP Engine portal — both under **Git Push** and **SSH Keys** (two separate registrations, same key).
 - WP Engine API credentials in 1Password (`Employee` vault, item `WP Engine API`).
 - `op` CLI authenticated (`op whoami` works).
@@ -37,8 +40,9 @@ Pull the private key from 1Password and configure SSH:
 op read "op://Employee/wpengine_ed25519/private key" > ~/.ssh/wpengine_ed25519
 chmod 600 ~/.ssh/wpengine_ed25519
 
-# Trust both WP Engine SSH hosts
-ssh-keyscan git.wpengine.com >> ~/.ssh/known_hosts
+# Trust WP Engine git push host (RSA — what WP Engine's git.wpengine.com serves)
+ssh-keyscan -t rsa git.wpengine.com >> ~/.ssh/known_hosts
+# Trust WP Engine SSH gateway
 ssh-keyscan -H ssh.wpengine.net >> ~/.ssh/known_hosts
 ```
 
@@ -80,19 +84,36 @@ ssh <install>@<install>.ssh.wpengine.net wp --info
 
 ### 2) Deploy via git push
 
-Find the remote URL on the WP Engine portal: `https://my.wpengine.com/installs/<ENV>/git_push`
+**Always get the exact remote URL from the WP Engine portal** — it includes the environment prefix:
+`https://my.wpengine.com/installs/<ENV>/git_push`
+
+The URL format is: `git@git.wpengine.com:<environment>/<install-name>.git`  
+where `<environment>` is `production`, `staging`, or `development`.
 
 ```bash
-git remote add wpengine git@git.wpengine.com:<install-name>.git
-# Staging environment:
-git remote add wpengine-staging git@git.wpengine.com:<install-name>stg.git
+# Production (copy exact URL from portal)
+git remote add wpengine-prod git@git.wpengine.com:production/<install-name>.git
 
-git push wpengine main
+# Staging
+git remote add wpengine-staging git@git.wpengine.com:staging/<install-name>stg.git
+
+# Development
+git remote add wpengine-dev git@git.wpengine.com:development/<install-name>dev.git
+```
+
+Deploy:
+```bash
+git push wpengine-prod main
+# WP Engine expects the branch name 'main' on its remote
+git push wpengine-staging staging:main
 ```
 
 - WP Engine deploys the pushed branch automatically.
 - Only WordPress files are pushed — not `node_modules`, build artifacts, or `.git/`.
 - After push, allow 1–2 min for propagation.
+
+> **Verify the remote URL**: `git remote -v` should show `git@git.wpengine.com:production/<install>.git`.
+> If it shows `git@git.wpengine.com:<install>.git` (no environment prefix), update it — that is an older format that may no longer work.
 
 ---
 
@@ -357,7 +378,7 @@ curl -fsSL https://raw.githubusercontent.com/wpengine/wpe-labs-platform-skills/m
 | `Host key verification failed` (git) | `ssh-keyscan git.wpengine.com >> ~/.ssh/known_hosts` |
 | `Host key verification failed` (gateway) | `ssh-keyscan -H ssh.wpengine.net >> ~/.ssh/known_hosts` |
 | `Permission denied` | Confirm key at `~/.ssh/wpengine_ed25519`, `chmod 600`. Check the key is registered under **SSH Keys** in the WP Engine portal (separate from git push keys). |
-| `git push rejected` | Verify remote URL matches install name exactly (case-sensitive) |
+| `git push rejected` | Verify remote URL includes environment prefix (`production/<install>.git`). Get the exact URL from the portal: `https://my.wpengine.com/installs/<ENV>/git_push` |
 | SSH gateway hangs | Kill stale ControlMaster socket: `ssh -O stop <install>@<install>.ssh.wpengine.net` |
 | `wp: command not found` on gateway | WP Engine's WP-CLI path: try `php /usr/local/bin/wp` or contact WP Engine support |
 | WP-CLI returns wrong site | Add `--path=/home/wpe-user/sites/<install>` explicitly |

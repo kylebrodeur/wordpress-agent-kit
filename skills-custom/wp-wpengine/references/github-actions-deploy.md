@@ -83,7 +83,7 @@ Add under **Settings → Secrets and variables → Actions**:
 | Secret | Value |
 |--------|-------|
 | `WPE_SSH_KEY` | Private key (contents of `wpengine_ed25519`) |
-| `WPE_SSH_KNOWN_HOSTS` | Output of `ssh-keyscan git.wpengine.com && ssh-keyscan -H ssh.wpengine.net` |
+| `WPE_SSH_KNOWN_HOSTS` | Output of `ssh-keyscan -t rsa git.wpengine.com && ssh-keyscan -H ssh.wpengine.net` |
 | `WPE_PROD_INSTALL` | Production install slug (e.g., `mysite`) |
 | `WPE_STAGING_INSTALL` | Staging install slug (e.g., `mysitestg`) |
 | `WPE_DEV_INSTALL` | Development install slug (e.g., `mysitedev`) |
@@ -93,7 +93,7 @@ Add under **Settings → Secrets and variables → Actions**:
 
 Generate the known hosts value once and save:
 ```bash
-{ ssh-keyscan git.wpengine.com; ssh-keyscan -H ssh.wpengine.net; } 2>/dev/null
+{ ssh-keyscan -t rsa git.wpengine.com; ssh-keyscan -H ssh.wpengine.net; } 2>/dev/null
 ```
 
 ---
@@ -254,7 +254,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_DEV_INSTALL }}
         run: |
-          git remote add wpe-dev git@git.wpengine.com:${INSTALL}.git
+          git remote add wpe-dev git@git.wpengine.com:development/${INSTALL}.git
           # Force-add built assets (normally gitignored)
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
@@ -355,7 +355,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_STAGING_INSTALL }}
         run: |
-          git remote add wpe-staging git@git.wpengine.com:${INSTALL}.git
+          git remote add wpe-staging git@git.wpengine.com:staging/${INSTALL}.git
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
           git push wpe-staging HEAD:main --force
@@ -534,7 +534,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_PROD_INSTALL }}
         run: |
-          git remote add wpe-prod git@git.wpengine.com:${INSTALL}.git
+          git remote add wpe-prod git@git.wpengine.com:production/${INSTALL}.git
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
           git push wpe-prod HEAD:main --force
@@ -680,7 +680,7 @@ git add -f vendor/ 2>/dev/null || true
 **Fast rollback (previous commit):**
 ```bash
 # From your local machine
-git push wpengine main~1:main --force
+git push wpe-prod main~1:main --force
 ```
 
 **WP Engine API rollback (to a specific snapshot):**
@@ -698,7 +698,7 @@ curl -s -X POST \
 **Emergency: revert code + flush:**
 ```bash
 # Push the previous commit
-git push wpengine HEAD~1:main --force
+git push wpe-prod HEAD~1:main --force
 
 # Flush via SSH gateway
 ssh <install>@<install>.ssh.wpengine.net \
