@@ -1,7 +1,7 @@
 # Source and tests (dist/ is what ships)
 src/
 tests/
-scripts/
+scripts/build-bundles.ts
 playground/
 
 # Build artifacts not needed at runtime
