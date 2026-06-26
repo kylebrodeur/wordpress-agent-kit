@@ -260,10 +260,33 @@ Read: `references/github-actions-deploy.md`
 **CI gate policy — no `--no-verify`:**
 - All lint, typecheck, tests, and build checks must pass before any push reaches a deploy branch.
 - `--no-verify` is explicitly forbidden. Hooks exist to surface problems early — bypass them and you own the breakage.
-- The CI gate (`ci-gate / full-check`) is a required status check on all protected branches. It mirrors local hooks exactly and cannot be skipped.
+- The CI gate runs two parallel jobs (`php-gate` + `js-gate`) for every push to a protected branch. Required status check.
 - Every deploy workflow runs a `verify` job as its first dependency — deploys never start without it passing.
 
 Read: `references/ci-gate.md`
+
+**Agent-runnable scripts:**
+
+| Script | Purpose | When to use |
+|--------|---------|-------------|
+| `scripts/ci-gate.sh` | Run the full local CI gate (PHP + JS/TS) | Before any push to a deploy branch |
+| `scripts/wpe-preflight.sh` | Pre-deploy sanity checks (SSH, WP, HTTP) | Before triggering a deploy |
+| `scripts/wpe-check.sh` | SSH connectivity to all configured installs | After machine setup or debugging SSH |
+
+Run CI gate locally:
+```bash
+bash {baseDir}/scripts/ci-gate.sh
+```
+
+Run pre-deploy preflight:
+```bash
+INSTALL=mysite bash {baseDir}/scripts/wpe-preflight.sh production
+```
+
+Check all SSH connections:
+```bash
+bash {baseDir}/scripts/wpe-check.sh
+```
 
 ---
 
