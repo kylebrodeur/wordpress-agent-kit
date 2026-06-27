@@ -43,13 +43,13 @@ deploy environments, Composer-managed PHP deps, CI gate, and git hooks.
 ### 1) Probe the repository (always first)
 
 Run the structure detector. It identifies WP packages, JS workspaces, existing tooling,
-WP Engine remotes, and monorepo layout.
+WP Engine remotes, **GitHub CLI status, existing secrets, and branch protection**.
 
 ```bash
 node {baseDir}/scripts/detect-structure.mjs --pretty
 ```
 
-Read the output carefully before making any changes. Key fields:
+Key fields in the output:
 
 | Field | What it tells you |
 |-------|------------------|
@@ -61,6 +61,11 @@ Read the output carefully before making any changes. Key fields:
 | `js.hasBiome` | Biome already configured |
 | `playground.hasPlayground` | Playground scripts/blueprints already exist |
 | `hasAgentKit` | wp-agent-kit already installed |
+| `github.ghInstalled` | `gh` CLI available |
+| `github.authenticated` | `gh auth status` passes |
+| `github.existingSecrets[]` | GitHub Actions secrets already set |
+| `github.missingSecrets[]` | Required WPE secrets not yet set |
+| `github.branchProtection` | Protection status per branch |
 
 For JSON output (useful in scripts/CI):
 ```bash
@@ -83,6 +88,7 @@ If any of these are unknown after the probe, ask the user before proceeding:
 | SatisPress URL + API key? | User has premium plugins to manage |
 | Package manager preference? | `packageManager` is null |
 | Deploy strategy for monorepo? | Multiple WP packages + no WPE remotes |
+| Is `gh` CLI installed and authenticated? | Check `github.ghInstalled` and `github.authenticated` |
 
 ---
 
@@ -232,7 +238,41 @@ Read: `references/monorepo-patterns.md` for multi-mount configurations.
 
 ---
 
-### 10) Set up WP Engine GitHub Actions CI/CD
+### 10) Set up GitHub repo with `gh` CLI
+
+If `github.ghInstalled` is true, use the GitHub setup script to:
+- Verify authentication and repo access
+- Check which required secrets are already set
+- Set missing secrets interactively (SSH key, known hosts, WPE install slugs, API credentials)
+- Configure branch protection for `main`, `staging`, and `develop`
+
+```bash
+# Check-only first (no changes)
+bash {baseDir}/scripts/setup-github.sh --check-only
+
+# Set missing secrets interactively
+bash {baseDir}/scripts/setup-github.sh --set-secrets
+
+# Configure branch protection
+bash {baseDir}/scripts/setup-github.sh --set-protection
+
+# Do everything at once
+bash {baseDir}/scripts/setup-github.sh --set-all
+
+# Pass WPE slugs to skip those prompts
+bash {baseDir}/scripts/setup-github.sh --set-all \
+  --wpe-prod=mysite --wpe-staging=mysitestg --wpe-dev=mysitedev
+```
+
+The script handles `WPE_SSH_KNOWN_HOSTS` automatically via `ssh-keyscan`, and reads
+`WPE_SSH_KEY` from `~/.ssh/wpengine_ed25519` if present (or from 1Password via `op read`).
+
+> If `gh` is not installed: `brew install gh` (macOS) or see https://cli.github.com.
+> After install: `gh auth login`.
+
+---
+
+### 11) Set up WP Engine GitHub Actions CI/CD
 
 Read the `wp-wpengine` skill:
 - `references/ci-gate.md` — CI gate with PHP + JS parallel jobs, no-verify policy
@@ -255,8 +295,9 @@ WPE_API_USER / WPE_API_PASSWORD  — for pre-deploy DB backups
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `scripts/detect-structure.mjs` | Probe repo structure → JSON | `node {baseDir}/scripts/detect-structure.mjs [--pretty]` |
+| `scripts/detect-structure.mjs` | Probe repo structure + GitHub status → JSON | `node {baseDir}/scripts/detect-structure.mjs [--pretty]` |
 | `scripts/bootstrap.sh` | One-command setup (hooks + PHP + JS deps) | `bash {baseDir}/scripts/bootstrap.sh` |
+| `scripts/setup-github.sh` | Check/set GitHub secrets + branch protection via `gh` | `bash {baseDir}/scripts/setup-github.sh [--set-all]` |
 | `scripts/package-wp.sh` | Build + zip WP plugins/themes | `bash {baseDir}/scripts/package-wp.sh [--dry-run]` |
 | `scripts/playground-start.sh` | Start interactive Playground | `bash {baseDir}/scripts/playground-start.sh` |
 | `scripts/playground-verify.sh` | Headless WP verification | `bash {baseDir}/scripts/playground-verify.sh` |

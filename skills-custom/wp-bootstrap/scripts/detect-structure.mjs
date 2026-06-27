@@ -281,7 +281,95 @@ function detectWpackagist() {
   return repos.some(r => typeof r === 'object' && r.url?.includes('wpackagist.org'));
 }
 
-// ── 5. Assemble result ────────────────────────────────────────────────────────
+// ── 5. GitHub CLI detection ─────────────────────────────────────────────────
+
+function detectGithub() {
+  // Check if gh is installed
+  const ghInstalled = !!run('command -v gh 2>/dev/null || which gh 2>/dev/null');
+  if (!ghInstalled) {
+    return { ghInstalled: false, authenticated: false, account: null,
+      repoOwner: null, repoName: null, repoUrl: null, visibility: null,
+      defaultBranch: null, existingSecrets: [], missingSecrets: [],
+      branchProtection: {}, error: 'gh CLI not installed' };
+  }
+
+  // Parse owner/repo from git remote origin
+  const originUrl = run('git remote get-url origin 2>/dev/null');
+  let repoOwner = null, repoName = null;
+  if (originUrl) {
+    const sshMatch = originUrl.match(/git@github\.com[:/]([^/]+)\/([^.]+)(?:\.git)?$/);
+    const httpsMatch = originUrl.match(/https?:\/\/github\.com\/([^/]+)\/([^/.]+)/);
+    const m = sshMatch ?? httpsMatch;
+    if (m) { repoOwner = m[1]; repoName = m[2]; }
+  }
+
+  // Check authentication
+  const authOut = run('gh auth status 2>&1');
+  const authenticated = authOut ? /Logged in to github\.com/.test(authOut) : false;
+  const accountMatch = authOut?.match(/account (\S+)/);
+  const account = accountMatch?.[1] ?? null;
+
+  if (!authenticated || !repoOwner || !repoName) {
+    return { ghInstalled: true, authenticated, account, repoOwner, repoName,
+      repoUrl: repoOwner && repoName ? `https://github.com/${repoOwner}/${repoName}` : null,
+      visibility: null, defaultBranch: null, existingSecrets: [], missingSecrets: [],
+      branchProtection: {}, error: authenticated ? 'no GitHub remote found' : 'not authenticated' };
+  }
+
+  // Repo info
+  let repoInfo = null;
+  try {
+    const info = run(`gh repo view ${repoOwner}/${repoName} --json name,owner,url,defaultBranchRef,visibility 2>/dev/null`);
+    if (info) repoInfo = JSON.parse(info);
+  } catch {}
+
+  const defaultBranch = repoInfo?.defaultBranchRef?.name ?? 'main';
+  const visibility = repoInfo?.visibility ?? null;
+  const repoUrl = repoInfo?.url ?? `https://github.com/${repoOwner}/${repoName}`;
+
+  // Existing secrets
+  const secretsOut = run(`gh secret list --repo ${repoOwner}/${repoName} --json name 2>/dev/null`);
+  let existingSecrets = [];
+  try { existingSecrets = secretsOut ? JSON.parse(secretsOut).map(s => s.name) : []; } catch {}
+
+  // Required secrets for WP Engine deploy
+  const REQUIRED_SECRETS = [
+    'WPE_SSH_KEY', 'WPE_SSH_KNOWN_HOSTS',
+    'WPE_PROD_INSTALL', 'WPE_PROD_GIT_URL',
+    'WPE_STAGING_INSTALL', 'WPE_STAGING_GIT_URL',
+    'WPE_DEV_INSTALL', 'WPE_DEV_GIT_URL',
+    'WPE_API_USER', 'WPE_API_PASSWORD',
+  ];
+  const existingSet = new Set(existingSecrets);
+  const missingSecrets = REQUIRED_SECRETS.filter(s => !existingSet.has(s));
+
+  // Branch protection check
+  const branchProtection = {};
+  for (const branch of [defaultBranch, 'staging', 'develop']) {
+    const protOut = run(`gh api repos/${repoOwner}/${repoName}/branches/${branch}/protection 2>/dev/null`);
+    try {
+      const prot = protOut ? JSON.parse(protOut) : null;
+      branchProtection[branch] = prot && !prot.message ? {
+        protected: true,
+        requiredChecks: prot.required_status_checks?.contexts ?? [],
+        requiredReviewers: prot.required_pull_request_reviews?.required_approving_review_count ?? 0,
+        enforceAdmins: prot.enforce_admins?.enabled ?? false,
+        allowForcePushes: prot.allow_force_pushes?.enabled ?? true,
+      } : { protected: false };
+    } catch {
+      branchProtection[branch] = { protected: false };
+    }
+  }
+
+  return {
+    ghInstalled: true, authenticated, account,
+    repoOwner, repoName, repoUrl, visibility, defaultBranch,
+    existingSecrets, missingSecrets, branchProtection,
+    error: null,
+  };
+}
+
+// ── 6. Assemble result ────────────────────────────────────────────────────────
 
 const wpPackages = detectWpPackages();
 const wpRoot = detectWpRoot();
@@ -332,6 +420,8 @@ const result = {
       .filter(m => !seen.has(m[1]) && seen.add(m[1]))
       .map(m => ({ name: m[1], url: m[2] }));
   })(),
+
+  github: detectGithub(),
 };
 
 // ── 6. Output ─────────────────────────────────────────────────────────────────
@@ -354,6 +444,22 @@ if (pretty) {
   console.log(`  WPackagist:     ${result.wpackagist ? 'yes' : 'no'}`);
   console.log(`  Agent kit:      ${result.hasAgentKit ? 'installed' : 'not installed'}`);
   console.log(`  Git hooks:      ${gitHooks ?? 'none'}`);
+
+  // GitHub section
+  const gh = result.github;
+  console.log(`\n  GitHub CLI:     ${gh.ghInstalled ? `installed (${gh.authenticated ? `✓ ${gh.account}` : '✗ not authenticated'})` : '✗ not installed'}`);
+  if (gh.ghInstalled && gh.authenticated && gh.repoOwner) {
+    console.log(`  GitHub repo:    ${gh.repoUrl} (${gh.visibility?.toLowerCase()})`);
+    console.log(`  Secrets:        ${gh.existingSecrets.length} set, ${gh.missingSecrets.length} missing`);
+    if (gh.missingSecrets.length > 0) {
+      console.log(`  Missing:        ${gh.missingSecrets.join(', ')}`);
+    }
+    const mainBranch = gh.defaultBranch ?? 'main';
+    const prot = gh.branchProtection[mainBranch];
+    console.log(`  Branch prot:    ${mainBranch}=${prot?.protected ? '✓ protected' : '✗ unprotected'}`);
+  } else if (gh.error) {
+    console.log(`  GitHub:         ${gh.error}`);
+  }
   console.log();
 } else {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
