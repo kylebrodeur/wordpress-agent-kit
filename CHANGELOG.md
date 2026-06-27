@@ -1,3 +1,31 @@
+## [0.6.0] - 2026-06-27
+
+### Added
+- **`wp-bootstrap` skill** (`skills-custom/wp-bootstrap/`): Full project bootstrapper covering
+  monorepo detection, Composer/WPackagist/SatisPress, Playground, WP Engine CI/CD, git hooks.
+  Inspired by patterns from the wp-agent-os project (setup.sh, package-plugins.sh, run-playground.sh,
+  run-local-verify.sh). References: `monorepo-patterns.md`, `composer-setup.md`.
+- **`wp-bootstrap` CLI command** (`wp-agent-kit bootstrap`): Detects project structure and scaffolds
+  tooling. Supports `--detect-only`, `--auto`, `--wpe-prod/staging/dev`, `--with-wpackagist`,
+  `--with-satispress`, `--dry-run`, `--json`.
+- **`bootstrapApi`** in programmatic API: `import { bootstrapApi } from 'wordpress-agent-kit/api'`.
+- **`wp_bootstrap` Pi tool** + `/wp-bootstrap` command: structure detection and bootstrap in Pi.
+- **Agent scripts** in `wp-bootstrap/scripts/`:
+  - `detect-structure.mjs` — probe repo → JSON: monorepo, WP packages, tooling, WPE remotes
+  - `bootstrap.sh` — one-command setup (hooks + PHP + JS deps), reads `wp-bootstrap.config.json`
+  - `package-wp.sh` — build + zip WP plugins/themes for upload
+  - `playground-start.sh` — multi-mount interactive Playground
+  - `playground-verify.sh` — headless WP verification
+
+### Fixed
+- **WP Engine URL format**: Portal-first approach — formats vary by account. `SKILL.md` now shows
+  both forms and always defers to the portal. GitHub Actions workflows use `WPE_*_GIT_URL` secrets
+  (exact URL from portal) with bare-slug fallback.
+
+### Changed
+- `AGENTS.md`: updated for v0.6.0, added `wp_bootstrap` to tools/commands lists.
+- Extension header: updated description to include bootstrapping.
+
 ## [0.5.1] - 2026-06-27
 
 ### Added

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
+import { bootstrapCommand } from './commands/bootstrap.js';
 import { cleanSkillsCommand } from './commands/clean-skills.js';
 import { installCommand } from './commands/install.js';
 import { runPlaygroundCommand } from './commands/run-playground.js';
@@ -30,6 +31,7 @@ program
 	});
 
 // Add commands
+program.addCommand(bootstrapCommand);
 program.addCommand(cleanSkillsCommand);
 program.addCommand(installCommand);
 program.addCommand(setupCommand);

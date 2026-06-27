@@ -920,3 +920,7 @@ export type { CliResult, DryRunResult, OutputFormat, ProgressEvent } from '../ut
 export { ExitCode } from '../utils/exit-codes.js';
 export { OutputFormatter, createFormatter, parseOutputFormat } from '../utils/output.js';
 export { computeChanges, isKitInstalled, loadManifest, updateKit } from './updater.js';
+
+/** Bootstrap API */
+export type { BootstrapOptions, BootstrapResult } from './bootstrap.js';
+export { bootstrapApi } from './bootstrap.js';

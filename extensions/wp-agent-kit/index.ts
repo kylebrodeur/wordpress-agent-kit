@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
  * Provides Pi Coding Agent with WordPress development tools:
  * - 18 WordPress agent skills (17 upstream + wp-wpengine custom) at .agents/skills/ (AgentSkills.io convention)
  * - Project triage detection
- * - Skill installation, syncing, upgrade, and orphan cleanup
+ * - Skill installation, syncing, upgrade, orphan cleanup, and project bootstrapping
  *
  * Follows Pi Coding Agent SDK conventions (extensions.md, packages.md, skills.md).
  */
@@ -26,8 +26,15 @@ try {
 	apiModule = (await import('../../src/lib/api.js')) as typeof import('../../dist/lib/api.js');
 }
 
-const { installKitApi, syncSkillsApi, runTriageApi, cleanSkillsApi, isKitInstalled, loadManifest } =
-	apiModule;
+const {
+	installKitApi,
+	syncSkillsApi,
+	runTriageApi,
+	cleanSkillsApi,
+	bootstrapApi,
+	isKitInstalled,
+	loadManifest,
+} = apiModule;
 
 export default function (pi: ExtensionAPI) {
 	// =========================================================================
@@ -530,6 +537,113 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	// --- wp_bootstrap ---
+	pi.registerTool({
+		name: 'wp_bootstrap',
+		label: 'WP Bootstrap',
+		description:
+			'Bootstrap a WordPress project: detect monorepo structure, install agent kit, scaffold Composer/WPackagist/SatisPress, WP-CLI aliases, git hooks, Playground scripts, and WP Engine CI/CD. Supports single plugins/themes and monorepos (multiple WP packages + JS workspaces).',
+		promptSnippet: 'Detect WordPress project structure and bootstrap full tooling',
+		promptGuidelines: [
+			'Always run wp_bootstrap with detectOnly: true first to understand the project structure.',
+			'Use the structure report to identify monorepo patterns before scaffolding.',
+			'For monorepos, confirm WP package paths before proceeding.',
+		],
+		parameters: Type.Object({
+			targetDir: Type.Optional(
+				Type.String({
+					description: 'Project root directory (defaults to current working directory)',
+				})
+			),
+			detectOnly: Type.Optional(
+				Type.Boolean({
+					description: 'Only detect structure, do not scaffold anything (default: false)',
+				})
+			),
+			platform: Type.Optional(
+				Type.String({
+					description: 'Agent kit platform: github, pi, cursor, claude (default: github)',
+				})
+			),
+			wpeProd: Type.Optional(Type.String({ description: 'WP Engine production install slug' })),
+			wpeStaging: Type.Optional(Type.String({ description: 'WP Engine staging install slug' })),
+			wpeDev: Type.Optional(Type.String({ description: 'WP Engine development install slug' })),
+			withWpackagist: Type.Optional(
+				Type.Boolean({ description: 'Add WPackagist to composer.json' })
+			),
+			withSatispress: Type.Optional(
+				Type.String({ description: 'SatisPress URL to add to composer.json' })
+			),
+			dryRun: Type.Optional(
+				Type.Boolean({ description: 'Preview without making changes (default: false)' })
+			),
+		}),
+		async execute(_callId, params, _signal, onUpdate, _ctx) {
+			const targetDir = params.targetDir || process.cwd();
+
+			onUpdate?.({ content: [{ type: 'text', text: '▶ Detecting project structure...' }] });
+
+			const result = await bootstrapApi({
+				targetDir,
+				platform: (params.platform as 'github' | 'pi' | 'cursor' | 'claude') ?? 'github',
+				detectOnly: params.detectOnly ?? false,
+				dryRun: params.dryRun ?? false,
+				wpeEnvironments: {
+					production: params.wpeProd,
+					staging: params.wpeStaging,
+					development: params.wpeDev,
+				},
+				withWpackagist: params.withWpackagist,
+				withSatispress: params.withSatispress,
+			});
+
+			if (!result.success) {
+				return {
+					content: [
+						{ type: 'text', text: `Bootstrap failed: ${result.error?.message || 'Unknown error'}` },
+					],
+					isError: true,
+				};
+			}
+
+			const data = result.data as {
+				detectOnly: boolean;
+				structure: {
+					isMonorepo: boolean;
+					wpPackages: Array<{ type: string; name: string; path: string }>;
+					wpRoot: string | null;
+					packageManager: string;
+					wpeRemotes: Array<{ name: string; install: string }>;
+				};
+				actions: string[];
+				filesCreated: string[];
+			};
+
+			if (data.detectOnly) {
+				const s = data.structure;
+				const lines = [
+					'# Project Structure',
+					'',
+					`**Monorepo**: ${s.isMonorepo ? 'yes' : 'no'}  |  **Package manager**: ${s.packageManager ?? 'none'}  |  **WP root**: ${s.wpRoot ?? 'Playground-only'}`,
+					'',
+					`**WP packages** (${s.wpPackages.length}):`,
+					...s.wpPackages.map(
+						(p) => `- ${p.type === 'plugin' ? '🔌' : '🎨'} ${p.name ?? p.path} (\`${p.path}\`)`
+					),
+					'',
+					`**WP Engine remotes** (${s.wpeRemotes.length}):`,
+					...s.wpeRemotes.map((r) => `- ${r.name} (${r.install})`),
+				];
+				return { content: [{ type: 'text', text: lines.join('\n') }], details: data.structure };
+			}
+
+			return {
+				content: [{ type: 'text', text: ['# Bootstrap Complete', '', ...data.actions].join('\n') }],
+				details: data,
+			};
+		},
+	});
+
 	// =========================================================================
 	// Commands
 	// =========================================================================
@@ -622,6 +736,32 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify(`Found ${parts.join(', ')}`, 'info');
 			}
 			ctx.ui.setStatus('wp-clean', total === 0 ? 'clean' : `${total} issues`);
+		},
+	});
+
+	pi.registerCommand('wp-bootstrap', {
+		description: 'Detect WordPress project structure and bootstrap the full toolkit',
+		handler: async (args, ctx) => {
+			const targetDir = args?.trim() || ctx.cwd;
+			ctx.ui.setStatus('wp-bootstrap', 'Detecting...');
+			const result = await bootstrapApi({ targetDir, detectOnly: true });
+			if (!result.success) {
+				ctx.ui.notify(`Bootstrap failed: ${result.error?.message}`, 'error');
+				return;
+			}
+			const data = result.data as {
+				structure: {
+					isMonorepo: boolean;
+					wpPackages: Array<{ type: string; name: string; path: string }>;
+				};
+			};
+			const s = data.structure;
+			const pkgCount = s.wpPackages.length;
+			const label = s.isMonorepo
+				? `monorepo (${pkgCount} packages)`
+				: `${s.wpPackages[0]?.type ?? 'unknown'} (${pkgCount} package)`;
+			ctx.ui.notify(`Detected: ${label}`, 'info');
+			ctx.ui.setStatus('wp-bootstrap', label);
 		},
 	});
 }
