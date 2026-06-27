@@ -218,10 +218,19 @@ if $SET_SECRETS && [ "${#MISSING_SECRETS[@]}" -gt 0 ]; then
       WPE_SSH_KNOWN_HOSTS)
         info "Generating from ssh-keyscan..."
         VALUE=$(
-          { ssh-keyscan -t rsa git.wpengine.com 2>/dev/null; ssh-keyscan -H ssh.wpengine.net 2>/dev/null; }
+          {
+            # git push host — RSA key
+            ssh-keyscan -t rsa git.wpengine.com 2>/dev/null
+            # Include hashed entry for git.wpengine.com too
+            ssh-keyscan -H git.wpengine.com 2>/dev/null
+            # Note: SSH gateway subdomains ({install}.ssh.wpengine.net) use
+            # StrictHostKeyChecking=accept-new in the workflow SSH config,
+            # so they don't need pre-scanned entries here.
+          }
         )
         if [ -n "$VALUE" ]; then
           info "Generated $(echo "$VALUE" | wc -l) known_hosts entries"
+          info "Gateway subdomains auto-accepted via StrictHostKeyChecking=accept-new"
           confirm "  Set WPE_SSH_KNOWN_HOSTS?" && true || VALUE=""
         else
           warn "ssh-keyscan failed — check network connectivity"

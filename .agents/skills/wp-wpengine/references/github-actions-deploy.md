@@ -83,7 +83,7 @@ Add under **Settings → Secrets and variables → Actions**:
 | Secret | Value |
 |--------|-------|
 | `WPE_SSH_KEY` | Private key (contents of `wpengine_ed25519`) |
-| `WPE_SSH_KNOWN_HOSTS` | Output of `ssh-keyscan -t rsa git.wpengine.com && ssh-keyscan -H ssh.wpengine.net` |
+| `WPE_SSH_KNOWN_HOSTS` | Output of `ssh-keyscan -t rsa git.wpengine.com && ssh-keyscan -H git.wpengine.com` (git push host only; gateway subdomains use `StrictHostKeyChecking accept-new`) |
 | `WPE_PROD_INSTALL` | Production install slug (e.g., `mysite`) |
 | `WPE_PROD_GIT_URL` | Production git remote URL from portal (`git_push` page) |
 | `WPE_STAGING_INSTALL` | Staging install slug (e.g., `mysitestg`) |
@@ -96,7 +96,8 @@ Add under **Settings → Secrets and variables → Actions**:
 
 Generate the known hosts value once and save:
 ```bash
-{ ssh-keyscan -t rsa git.wpengine.com; ssh-keyscan -H ssh.wpengine.net; } 2>/dev/null
+{ ssh-keyscan -t rsa git.wpengine.com; ssh-keyscan -H git.wpengine.com; } 2>/dev/null
+# Note: SSH gateway subdomains use StrictHostKeyChecking=accept-new in workflows
 ```
 
 ---
@@ -268,7 +269,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_DEV_INSTALL }}
         run: |
-          ssh -o StrictHostKeyChecking=no ${INSTALL}@${INSTALL}.ssh.wpengine.net \
+          ssh -o StrictHostKeyChecking=accept-new ${INSTALL}@${INSTALL}.ssh.wpengine.net \
             wp cache flush --skip-plugins --skip-themes
 ```
 
@@ -369,7 +370,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_STAGING_INSTALL }}
         run: |
-          ssh -o StrictHostKeyChecking=no ${INSTALL}@${INSTALL}.ssh.wpengine.net bash -s <<'EOF'
+          ssh -o StrictHostKeyChecking=accept-new ${INSTALL}@${INSTALL}.ssh.wpengine.net bash -s <<'EOF'
             set -e
             wp cache flush --skip-plugins --skip-themes
             wp rewrite flush --skip-plugins --skip-themes
@@ -549,7 +550,7 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_PROD_INSTALL }}
         run: |
-          ssh -o StrictHostKeyChecking=no ${INSTALL}@${INSTALL}.ssh.wpengine.net bash -s <<'EOF'
+          ssh -o StrictHostKeyChecking=accept-new ${INSTALL}@${INSTALL}.ssh.wpengine.net bash -s <<'EOF'
             set -e
             wp cache flush --skip-plugins --skip-themes
             wp rewrite flush --skip-plugins --skip-themes
@@ -609,7 +610,7 @@ jobs:
             "https://${INSTALL}.wpenginepowered.com/" --max-time 30)
           echo "Post-rollback status: HTTP $STATUS"
           # Flush cache after rollback
-          ssh -o StrictHostKeyChecking=no ${INSTALL}@${INSTALL}.ssh.wpengine.net \
+          ssh -o StrictHostKeyChecking=accept-new ${INSTALL}@${INSTALL}.ssh.wpengine.net \
             wp cache flush --skip-plugins --skip-themes
           echo "❌ Deployment was ROLLED BACK to $PREV_SHA"
           exit 1  # Mark the job as failed so Slack notifies

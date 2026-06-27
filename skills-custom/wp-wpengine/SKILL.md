@@ -42,8 +42,10 @@ chmod 600 ~/.ssh/wpengine_ed25519
 
 # Trust WP Engine git push host (RSA — what WP Engine's git.wpengine.com serves)
 ssh-keyscan -t rsa git.wpengine.com >> ~/.ssh/known_hosts
-# Trust WP Engine SSH gateway
-ssh-keyscan -H ssh.wpengine.net >> ~/.ssh/known_hosts
+# Gateway: scan the specific install hostname (each install has its own subdomain)
+# Do this once per environment you connect to:
+ssh-keyscan -H <install>.ssh.wpengine.net >> ~/.ssh/known_hosts
+# e.g.: ssh-keyscan -H mysite.ssh.wpengine.net >> ~/.ssh/known_hosts
 ```
 
 Add to `~/.ssh/config` (before any `Host *` block):
@@ -55,15 +57,18 @@ Host git.wpengine.com
   IdentityFile ~/.ssh/wpengine_ed25519
   IdentitiesOnly yes
 
-# WP Engine SSH gateway (WP-CLI + direct access)
+# WP Engine SSH gateway (WP-CLI + file transfer)
 Host *.ssh.wpengine.net
   IdentityFile ~/.ssh/wpengine_ed25519
   IdentitiesOnly yes
   ControlMaster auto
   ControlPath ~/.ssh/wpe-%r@%h:%p
   ControlPersist 10m
+  StrictHostKeyChecking accept-new
 ```
 
+> **`StrictHostKeyChecking accept-new`**: automatically accepts and stores the host key on first connection, then rejects any change to that key (MITM protection). Safer than `no`; avoids having to manually `ssh-keyscan` each install hostname.
+>
 > **ControlMaster / ControlPersist**: multiplexes SSH connections so subsequent commands over the same gateway reuse the existing connection. Cuts per-command latency from ~2 s to ~100 ms for repeated WP-CLI invocations.
 
 Verify git push access:
@@ -184,6 +189,59 @@ wp @production search-replace 'old-domain.com' 'new-domain.com' --dry-run
 ```
 
 > Commit `wp-cli.yml` to the repo so all team members and CI pipelines share the same remote aliases.
+
+#### Method D — SCP / rsync for file transfer
+
+The SSH gateway also accepts SCP and rsync (port 22). Use this to pull/push files without a full git push:
+
+```bash
+# SCP: download a file from the server
+scp -P 22 <install>@<install>.ssh.wpengine.net:sites/<install>/wp-content/uploads/large-file.zip ./
+
+# SCP: upload a file to the server
+scp -P 22 ./my-patch.php <install>@<install>.ssh.wpengine.net:sites/<install>/wp-content/plugins/my-plugin/
+
+# rsync: sync wp-content/uploads from production to local (read-only pull)
+rsync -avz --progress \
+  -e "ssh -p 22" \
+  <install>@<install>.ssh.wpengine.net:sites/<install>/wp-content/uploads/ \
+  ./local-uploads/
+
+# rsync: push a theme to staging (careful with --delete)
+rsync -avz --dry-run \
+  -e "ssh -p 22" \
+  ./my-theme/ \
+  <install>stg@<install>stg.ssh.wpengine.net:sites/<install>stg/wp-content/themes/my-theme/
+```
+
+> **WP Engine server path**: WordPress root is `sites/<install>/` relative to the SSH home, or `/home/wpe-user/sites/<install>` as an absolute path. `wp-content/` lives inside that root.
+
+#### Method E — Multiple commands via heredoc
+
+Run several commands in one SSH session without reconnecting:
+
+```bash
+# Heredoc over SSH (most efficient — one connection for all commands)
+ssh <install>@<install>.ssh.wpengine.net bash -s << 'EOF'
+  set -e
+  wp cache flush --skip-plugins --skip-themes
+  wp rewrite flush --skip-plugins --skip-themes
+  wp cron event run --due-now --skip-plugins --skip-themes
+  wp core version --skip-plugins --skip-themes
+EOF
+
+# Interactive WP-CLI commands need -t (pseudo-TTY allocation)
+# e.g. wp shell for a REPL session
+ssh -t <install>@<install>.ssh.wpengine.net wp shell
+```
+
+#### SSH gateway environment notes
+
+- **Restricted shell**: The gateway provides a limited shell environment. WP-CLI, PHP, basic POSIX utilities (echo, cat, stat, du, find, grep) and rsync/SCP are available. Package installation (`apt`, `yum`), sudo, and arbitrary service management are **not** available.
+- **PHP version**: Matches the PHP version configured for that WP Engine install. `php --version` to confirm.
+- **WordPress path**: `~/sites/<install>/` (relative to SSH home) or `/home/wpe-user/sites/<install>` (absolute).
+- **`--path` flag**: If WP-CLI returns "not a WordPress installation", add `--path=/home/wpe-user/sites/<install>` explicitly.
+- **Legacy gateway**: `ssh.wpengine.net` (no subdomain) is the old generic gateway address. Current convention always uses `<install>.ssh.wpengine.net`.
 
 ---
 
@@ -382,7 +440,7 @@ curl -fsSL https://raw.githubusercontent.com/wpengine/wpe-labs-platform-skills/m
 | Symptom | Fix |
 |---|---|
 | `Host key verification failed` (git) | `ssh-keyscan git.wpengine.com >> ~/.ssh/known_hosts` |
-| `Host key verification failed` (gateway) | `ssh-keyscan -H ssh.wpengine.net >> ~/.ssh/known_hosts` |
+| `Host key verification failed` (gateway) | Run `ssh-keyscan -H <install>.ssh.wpengine.net >> ~/.ssh/known_hosts` for that specific install hostname. Or add `StrictHostKeyChecking accept-new` to the `*.ssh.wpengine.net` SSH config block — it will auto-accept on first connect. |
 | `Permission denied` | Confirm key at `~/.ssh/wpengine_ed25519`, `chmod 600`. Check the key is registered under **SSH Keys** in the WP Engine portal (separate from git push keys). |
 | `git push rejected` | Get the exact URL from the portal (`https://my.wpengine.com/installs/<ENV>/git_push`). URL format varies by account — copy it verbatim. |
 | SSH gateway hangs | Kill stale ControlMaster socket: `ssh -O stop <install>@<install>.ssh.wpengine.net` |
