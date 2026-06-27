@@ -69,6 +69,6 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 ## Pi Extension (Package)
 
 - `pi.extensions`: `./extensions/wp-agent-kit` — registers WordPress agent tools
-- `pi.skills`: `./.agents/skills` — 26 WordPress skills discoverable by Pi (17 upstream + 9 custom from `skills-custom/`). Uses AgentSkills.io convention.
+- `pi.skills`: removed — Pi auto-discovers `.agents/skills/` from the project cwd (AgentSkills.io convention). The extension's `resources_discover` handler serves the package's 26 skills when the project has no `.agents/skills/` of its own; stays silent otherwise to avoid name-collision warnings.
 - Tools: `wp_triage`, `wp_install_kit`, `wp_sync_skills`, `wp_upgrade`, `wp_clean_skills`
 - Commands: `/wp-triage`, `/wp-install`, `/wp-sync-skills`, `/wp-upgrade`, `/wp-clean-skills`

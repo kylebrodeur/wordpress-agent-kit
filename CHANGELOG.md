@@ -1,3 +1,19 @@
+## [0.7.1] - 2026-06-27
+
+### Fixed
+
+- **Pi skill collision** (26 duplicate warnings per session): Removed `pi.skills: "./.agents/skills"`
+  from `package.json`. Pi auto-discovers `.agents/skills/` from the project cwd via the
+  AgentSkills.io convention — having the same directory registered at both the package level
+  (`pi.skills`) and the project level (auto-discovery) produced 26 name-collision warnings
+  every time Pi started, in both the dev project and any user project that had run `install`.
+
+- **`resources_discover` — cwd-aware, zero-collision logic**: The handler now reads `event.cwd`
+  (typed on `ResourcesDiscoverEvent`) to determine whether the current project already has its
+  own `.agents/skills/`. If yes, it stays silent (Pi's project-level scan handles discovery).
+  If no, it serves the package's canonical `.agents/skills/` so all 26 skills are immediately
+  available even before `wp-agent-kit install` is run.
+
 ## [0.7.0] - 2026-06-27
 
 ### Added

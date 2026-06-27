@@ -5,11 +5,19 @@ import { fileURLToPath } from 'node:url';
  * WordPress Agent Kit — Pi Extension
  *
  * Provides Pi Coding Agent with WordPress development tools:
- * - 26 WordPress agent skills (17 upstream + 9 custom) at .agents/skills/ (AgentSkills.io convention)
+ * - 26 WordPress agent skills (17 upstream + 9 custom) via .agents/skills/ (AgentSkills.io convention).
+ *   Skills are served by resources_discover (cwd-aware, zero collision).
  * - Project triage detection
  * - Skill installation, syncing, upgrade, orphan cleanup, and project bootstrapping
  *
  * Follows Pi Coding Agent SDK conventions (extensions.md, packages.md, skills.md).
+ *
+ * Collision-free skill loading:
+ *   Pi auto-discovers .agents/skills/ from the project cwd. We must NOT register the
+ *   same directory via pi.skills in package.json (removed) — that would cause 26 duplicate
+ *   name warnings every session. resources_discover instead checks event.cwd: if the
+ *   project already has .agents/skills/, it stays silent; otherwise it serves the
+ *   package's canonical .agents/skills/ so skills work before `install` is run.
  */
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
@@ -40,38 +48,40 @@ export default function (pi: ExtensionAPI) {
 	// =========================================================================
 	// Skills Registration
 	// =========================================================================
-	// Primary skills (.agents/skills/) are registered via `pi.skills` in package.json.
-	// Pi also auto-discovers from .agents/skills/ at the project level (AgentSkills.io convention).
-	// The resources_discover handler ONLY supplements skills that aren't already
-	// covered by the static manifest — specifically, custom skills from
-	// skills-custom/ that haven't been synced into .agents/skills/ yet.
-	// This avoids name collisions (Pi keeps first-loaded, warns on duplicates).
-	pi.on('resources_discover', async (_event, _ctx) => {
+	// Skills live in .agents/skills/ (AgentSkills.io convention).
+	// Pi auto-discovers .agents/skills/ from the project cwd — we must NOT also
+	// register the same directory via pi.skills in package.json, otherwise every
+	// skill collides (package-level registration + project-level auto-discovery).
+	//
+	// Strategy (cwd-aware):
+	//   • If the project already has its own .agents/skills/ (after running
+	//     `wp-agent-kit install`), stay silent — Pi's project-level scan handles it.
+	//   • If the project has no .agents/skills/ yet, serve the package's canonical
+	//     .agents/skills/ so skills are available before install is run.
+	//
+	// This guarantees zero name-collision warnings in every scenario.
+	pi.on('resources_discover', async (event, _ctx) => {
 		const canonicalSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
-		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
 		const promptsDir = path.join(PACKAGE_ROOT, '.github', 'prompts');
 
-		// Only discover custom skills that aren't already in .agents/skills/
-		// (which is registered via pi.skills in package.json).
-		const skillPaths: string[] = [];
-		if (fs.existsSync(customSkillsDir)) {
-			const existingSkills = fs.existsSync(canonicalSkillsDir)
-				? new Set(fs.readdirSync(canonicalSkillsDir))
-				: new Set<string>();
-			for (const entry of fs.readdirSync(customSkillsDir)) {
-				if (!existingSkills.has(entry)) {
-					const entryPath = path.join(customSkillsDir, entry);
-					if (fs.statSync(entryPath).isDirectory()) {
-						skillPaths.push(entryPath);
-					}
-				}
-			}
+		// Check if the current project already has .agents/skills/ installed.
+		// If so, Pi's project-level discovery handles it — returning skillPaths
+		// here would produce 26 collision warnings for identical skill names.
+		const projectSkillsDir = path.join(event.cwd, '.agents', 'skills');
+		if (fs.existsSync(projectSkillsDir)) {
+			return { promptPaths: [promptsDir] };
 		}
 
-		return {
-			skillPaths: skillPaths.length > 0 ? skillPaths : undefined,
-			promptPaths: [promptsDir],
-		};
+		// Project has no .agents/skills/ yet — serve from the package so skills
+		// are immediately available even before `wp-agent-kit install` is run.
+		if (fs.existsSync(canonicalSkillsDir)) {
+			return {
+				skillPaths: [canonicalSkillsDir],
+				promptPaths: [promptsDir],
+			};
+		}
+
+		return { promptPaths: [promptsDir] };
 	});
 
 	// =========================================================================

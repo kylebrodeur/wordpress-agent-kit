@@ -1,6 +1,6 @@
 {
 	"name": "wordpress-agent-kit",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"description": "WordPress-focused AGENTS.md + Agent Skills starter kit for AI coding agents.",
 	"license": "GPL-2.0-or-later",
 	"author": "Kyle Brodeur <kyle@brodeur.me> (https://brodeur.me)",
@@ -27,8 +27,7 @@
 		"./api": "./dist/lib/api.js"
 	},
 	"pi": {
-		"extensions": ["./extensions/wp-agent-kit"],
-		"skills": ["./.agents/skills"]
+		"extensions": ["./extensions/wp-agent-kit"]
 	},
 	"scripts": {
 		"dev": "tsx src/cli.ts",
