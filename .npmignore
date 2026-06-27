@@ -19,6 +19,10 @@ vitest.config.ts
 # CI workflows (but NOT .github/agents/ or .github/instructions/ — those get installed)
 .github/workflows/
 
+# Upstream sync buffer — canonical skills live in .agents/skills/
+# .github/skills/ is gitignored but npm ignores .gitignore when .npmignore exists
+.github/skills/
+
 # Internal docs
 CLI_REVIEW.md
 CHANGELOG.md
