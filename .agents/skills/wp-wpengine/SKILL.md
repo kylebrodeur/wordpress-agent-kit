@@ -92,13 +92,19 @@ where `<environment>` is `production`, `staging`, or `development`.
 
 ```bash
 # Production (copy exact URL from portal)
-git remote add wpengine-prod git@git.wpengine.com:production/<install-name>.git
+# ⚠️  Always copy the exact URL from the WP Engine portal — formats vary by account:
+#    https://my.wpengine.com/installs/<ENV>/git_push
+#
+# Modern accounts (most common):
+git remote add wpengine-prod git@git.wpengine.com:<install-name>.git
+# Legacy accounts (some plans add an environment prefix):
+# git remote add wpengine-prod git@git.wpengine.com:production/<install-name>.git
 
-# Staging
-git remote add wpengine-staging git@git.wpengine.com:staging/<install-name>stg.git
+# Staging (check portal for exact URL)
+git remote add wpengine-staging git@git.wpengine.com:<install-name>stg.git
 
-# Development
-git remote add wpengine-dev git@git.wpengine.com:development/<install-name>dev.git
+# Development (check portal for exact URL)
+git remote add wpengine-dev git@git.wpengine.com:<install-name>dev.git
 ```
 
 Deploy:
@@ -378,7 +384,7 @@ curl -fsSL https://raw.githubusercontent.com/wpengine/wpe-labs-platform-skills/m
 | `Host key verification failed` (git) | `ssh-keyscan git.wpengine.com >> ~/.ssh/known_hosts` |
 | `Host key verification failed` (gateway) | `ssh-keyscan -H ssh.wpengine.net >> ~/.ssh/known_hosts` |
 | `Permission denied` | Confirm key at `~/.ssh/wpengine_ed25519`, `chmod 600`. Check the key is registered under **SSH Keys** in the WP Engine portal (separate from git push keys). |
-| `git push rejected` | Verify remote URL includes environment prefix (`production/<install>.git`). Get the exact URL from the portal: `https://my.wpengine.com/installs/<ENV>/git_push` |
+| `git push rejected` | Get the exact URL from the portal (`https://my.wpengine.com/installs/<ENV>/git_push`). URL format varies by account — copy it verbatim. |
 | SSH gateway hangs | Kill stale ControlMaster socket: `ssh -O stop <install>@<install>.ssh.wpengine.net` |
 | `wp: command not found` on gateway | WP Engine's WP-CLI path: try `php /usr/local/bin/wp` or contact WP Engine support |
 | WP-CLI returns wrong site | Add `--path=/home/wpe-user/sites/<install>` explicitly |

@@ -85,8 +85,11 @@ Add under **Settings → Secrets and variables → Actions**:
 | `WPE_SSH_KEY` | Private key (contents of `wpengine_ed25519`) |
 | `WPE_SSH_KNOWN_HOSTS` | Output of `ssh-keyscan -t rsa git.wpengine.com && ssh-keyscan -H ssh.wpengine.net` |
 | `WPE_PROD_INSTALL` | Production install slug (e.g., `mysite`) |
+| `WPE_PROD_GIT_URL` | Production git remote URL from portal (`git_push` page) |
 | `WPE_STAGING_INSTALL` | Staging install slug (e.g., `mysitestg`) |
+| `WPE_STAGING_GIT_URL` | Staging git remote URL from portal |
 | `WPE_DEV_INSTALL` | Development install slug (e.g., `mysitedev`) |
+| `WPE_DEV_GIT_URL` | Development git remote URL from portal |
 | `WPE_API_USER` | WP Engine API username (for backup snapshots) |
 | `WPE_API_PASSWORD` | WP Engine API password |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook (optional, for notifications) |
@@ -254,7 +257,8 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_DEV_INSTALL }}
         run: |
-          git remote add wpe-dev git@git.wpengine.com:development/${INSTALL}.git
+          # URL from portal: https://my.wpengine.com/installs/<ENV>/git_push (set WPE_DEV_GIT_URL secret)
+          git remote add wpe-dev "${WPE_DEV_GIT_URL:-git@git.wpengine.com:${INSTALL}.git}"
           # Force-add built assets (normally gitignored)
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
@@ -355,7 +359,8 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_STAGING_INSTALL }}
         run: |
-          git remote add wpe-staging git@git.wpengine.com:staging/${INSTALL}.git
+          # URL from portal: set WPE_STAGING_GIT_URL secret
+          git remote add wpe-staging "${WPE_STAGING_GIT_URL:-git@git.wpengine.com:${INSTALL}.git}"
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
           git push wpe-staging HEAD:main --force
@@ -534,7 +539,8 @@ jobs:
         env:
           INSTALL: ${{ secrets.WPE_PROD_INSTALL }}
         run: |
-          git remote add wpe-prod git@git.wpengine.com:production/${INSTALL}.git
+          # URL from portal: set WPE_PROD_GIT_URL secret
+          git remote add wpe-prod "${WPE_PROD_GIT_URL:-git@git.wpengine.com:${INSTALL}.git}"
           git add -f dist/ build/ 2>/dev/null || true
           git diff --cached --quiet || git commit -m "ci: add built assets [skip ci]"
           git push wpe-prod HEAD:main --force
