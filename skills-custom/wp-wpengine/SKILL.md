@@ -87,7 +87,117 @@ ssh <install>@<install>.ssh.wpengine.net wp --info
 
 ---
 
-### 2) Deploy via git push
+### 2A) Deploy via Official WP Engine GitHub Action (recommended)
+
+The official WP Engine GitHub Action uses **rsync over SSH** — faster, more flexible than git push, and built/maintained by WP Engine.
+
+Repository: `wpengine/github-action-wpe-site-deploy@v3`
+
+#### Required secret
+
+The official action uses `WPE_SSHG_KEY_PRIVATE` (your SSH private key). The action handles known_hosts automatically — no keyscan needed.
+
+```yaml
+# .github/workflows/deploy-production.yml
+name: Deploy → Production
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build assets
+        run: npm ci && npm run build
+
+      - name: Deploy to WP Engine
+        uses: wpengine/github-action-wpe-site-deploy@v3
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
+          WPE_ENV: <install-name>
+          PHP_LINT: true
+          CACHE_CLEAR: true
+          # Optional: deploy only a subdirectory (e.g., a theme)
+          # SRC_PATH: "wp-content/themes/my-theme/"
+          # REMOTE_PATH: "wp-content/themes/my-theme/"
+          # Exclude files via rsync flags:
+          FLAGS: -azvr --inplace --delete --exclude=.* --exclude-from=.deployignore
+          # Post-deploy WP-CLI script (runs on the remote server):
+          SCRIPT: "scripts/post-deploy.sh"
+```
+
+**`scripts/post-deploy.sh`** (committed to repo, runs on WP Engine after deploy):
+
+```bash
+#!/usr/bin/env bash
+set -e
+wp cache flush --skip-plugins --skip-themes
+wp rewrite flush --skip-plugins --skip-themes
+wp cron event run --due-now --skip-plugins --skip-themes
+echo "✅ Post-deploy WP-CLI complete"
+```
+
+**`.deployignore`** (rsync exclude list, committed to repo root):
+
+```
+.git
+node_modules
+.env
+.env.*
+README.md
+.github
+package.json
+package-lock.json
+pnpm-lock.yaml
+composer.json
+composer.lock
+*.test.*
+tests/
+```
+
+**Key options:**
+
+| Option | Description |
+|--------|-------------|
+| `WPE_ENV` | Install slug. Alias: `PRD_ENV`, `STG_ENV`, `DEV_ENV` for multi-env workflows |
+| `SRC_PATH` | Deploy subdirectory of repo (trailing slash = contents only) |
+| `REMOTE_PATH` | Destination on WP Engine (defaults to WP root) |
+| `PHP_LINT` | `true` to run PHP lint pre-deploy |
+| `FLAGS` | rsync flags. Default: `-azvr --inplace --exclude=.*` |
+| `SCRIPT` | Post-deploy bash script (relative to WP root on server) |
+| `CACHE_CLEAR` | `true` to clear page + CDN cache post-deploy (default: true) |
+
+**Multi-environment workflow:**
+
+```yaml
+# Branch → environment mapping
+on:
+  push:
+    branches: [develop, staging, main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build
+      - uses: wpengine/github-action-wpe-site-deploy@v3
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
+          # Branch → env: develop=dev, staging=stg, main=prod
+          DEV_ENV: ${{ github.ref == 'refs/heads/develop' && '<install>dev' || '' }}
+          STG_ENV: ${{ github.ref == 'refs/heads/staging' && '<install>stg' || '' }}
+          PRD_ENV: ${{ github.ref == 'refs/heads/main' && '<install>' || '' }}
+          CACHE_CLEAR: true
+```
+
+> **Secret name difference**: The official action uses `WPE_SSHG_KEY_PRIVATE`. Our custom git-push workflows use `WPE_SSH_KEY`. Both are the same private key — just stored under different secret names.
+
+---
+
+### 2B) Deploy via git push (alternative)
 
 **Always get the exact remote URL from the WP Engine portal** — it includes the environment prefix:
 `https://my.wpengine.com/installs/<ENV>/git_push`
@@ -336,7 +446,124 @@ wp @production cron event run <hook-name>
 
 ---
 
-### 7) GitHub Actions CI/CD pipeline
+### 5) Remote database access
+
+WP Engine provides three methods to access the remote database. No IP allowlisting required.
+
+#### Method A — `wp db query` via SSH gateway (simplest, recommended)
+
+No extra tools or credentials needed — connects through the authenticated SSH tunnel:
+
+```bash
+# Interactive query
+ssh <install>@<install>.ssh.wpengine.net wp db query 'SELECT post_title FROM wp_posts LIMIT 10;'
+
+# Export full DB (streams to local file)
+ssh <install>@<install>.ssh.wpengine.net wp db export - > backup-$(date +%F).sql
+
+# Or via wp-cli.yml alias
+wp @production db export - > backup-$(date +%F).sql
+wp @production db query 'SELECT option_name, option_value FROM wp_options WHERE autoload="yes" LIMIT 20;'
+```
+
+#### Method B — SSH tunnel + GUI tool (MySQL Workbench, Sequel Ace, TablePlus)
+
+First retrieve the DB password from the server:
+
+```bash
+# Get DB password from wp-config.php
+ssh <install>@<install>.ssh.wpengine.net \
+  wp config get DB_PASSWORD --skip-plugins --skip-themes
+
+# Or from the private config file
+ssh <install>@<install>.ssh.wpengine.net \
+  "grep WPENGINE_SESSION_DB_PASSWORD ./sites/<install>/_wpeprivate/config.json"
+```
+
+Start an SSH tunnel with local port forwarding:
+
+```bash
+ssh -L 3307:127.0.0.1:3306 <install>@<install>.ssh.wpengine.net
+# Keep this terminal open while using your GUI tool
+```
+
+Connect your GUI tool with:
+
+| Field | Value |
+|-------|-------|
+| Connection method | TCP/IP over SSH (or plain TCP once tunnel is open) |
+| SSH hostname | `<install>.ssh.wpengine.net` |
+| SSH username | `<install>` |
+| SSH key file | `~/.ssh/wpengine_ed25519` |
+| MySQL host | `127.0.0.1` |
+| MySQL port | `3306` (Workbench/Sequel Ace) or `3307` (other tools via tunnel) |
+| Database username | `<install>` |
+| Database password | from `DB_PASSWORD` / `WPENGINE_SESSION_DB_PASSWORD` |
+| Database name | `wp_<install>` |
+
+> **MySQL Workbench**: Use **Standard (TCP/IP) over SSH** connection type — it handles the tunnel internally, no separate `ssh -L` needed.
+> **Sequel Ace**: Use **SSH** connection type. If connection times out, increase timeout to 60s in Network settings.
+> **TablePlus, DBeaver, DataGrip**: Use TCP mode after opening the `ssh -L 3307:...` tunnel manually.
+
+#### DB credentials location on server
+
+```bash
+# From wp-config.php
+ssh <install>@<install>.ssh.wpengine.net grep "DB_" sites/<install>/wp-config.php
+
+# From WP Engine private config (includes session password)
+ssh <install>@<install>.ssh.wpengine.net cat sites/<install>/_wpeprivate/config.json
+```
+
+> DB name format: `wp_<install>` (e.g., `wp_mysite`). The session password in `config.json` as `WPENGINE_SESSION_DB_PASSWORD` may rotate — prefer `DB_PASSWORD` from `wp-config.php` for persistent access.
+
+---
+
+### 6) Pull WP Engine environment to local Playground
+
+Full DB + search-replace workflow for local development:
+
+```bash
+# 1. Export DB from WP Engine dev
+wp @development db export - > /tmp/wpe-dev-$(date +%F).sql
+
+# 2. Import into local WordPress
+wp db import /tmp/wpe-dev-$(date +%F).sql
+
+# 3. Search-replace remote domain with local
+wp search-replace 'https://dev.yoursite.wpengine.com' 'http://localhost:9400' \
+  --precise --report-changed-only
+
+# 4. Flush caches
+wp cache flush && wp rewrite flush
+
+# 5. Remote media — set upload_url_path so images load from the live server
+#    (no rsync of wp-content/uploads needed)
+wp option update upload_url_path 'https://dev.yoursite.wpengine.com/wp-content/uploads'
+# Images and attachments now load from the remote server transparently.
+# To revert when done:  wp option delete upload_url_path
+```
+
+> **`upload_url_path`**: A WordPress option (`wp_options`) that overrides the base URL
+> for all uploaded media. Setting it to the remote server's uploads path means your
+> local WordPress loads real images from production/staging without syncing any files.
+> Much faster than rsync for GBs of media. Reset it with `wp option delete upload_url_path`
+> before deploying.
+
+To also sync actual upload files (when you need local file access, not just URLs):
+
+```bash
+# rsync uploads from WP Engine (large — use --dry-run first)
+rsync -avz --dry-run \
+  -e "ssh -p 22" \
+  myinstall@myinstall.ssh.wpengine.net:sites/myinstall/wp-content/uploads/ \
+  ./wp-content/uploads/
+```
+
+See `wp-bootstrap` skill → `scripts/pull-wpe-env.sh` for the full automated version.
+
+---
+
 
 For full branch-gated deploys with safety guards, pre-deploy backups, smoke tests, and auto-rollback:
 
@@ -375,7 +602,7 @@ bash {baseDir}/scripts/wpe-check.sh
 
 ---
 
-### 8) wpe-labs skills (natural language management)
+### 10) wpe-labs skills (natural language management)
 
 Load API credentials, then use any `/wpe-labs:*` skill:
 
@@ -405,7 +632,7 @@ Example prompts:
 /wpe-labs:monthly-report last month
 ```
 
-### 9) Re-installing wpe-labs skills
+### 11) Re-installing wpe-labs skills
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wpengine/wpe-labs-platform-skills/main/install.sh | bash
