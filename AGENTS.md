@@ -63,12 +63,12 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 - The `src/lib/triage-mapper.ts` file contains logic for mapping project detection results to configuration options.
 - The `src/lib/api.ts` file exposes the programmatic API — all changes to command logic should flow through to the API.
 - The `vendor` directory is gitignored and populated via submodule or script. Upstream skills sync to `.github/skills/` (sync buffer) then copy to `.agents/skills/` (canonical).
-- The `.agents/skills/` directory contains 18 WordPress skills (17 upstream + 1 custom `wp-wpengine`) following the AgentSkills.io spec. Skills are installed to `.agents/skills/` (universal convention) instead of platform-specific directories.
+- The `.agents/skills/` directory contains 26 WordPress skills (17 upstream + 9 custom) following the AgentSkills.io spec. Custom skills: `wp-wpengine`, `wp-bootstrap`, `wp-gravity-forms`, `wp-gravity-smtp`, `wp-gravity-connect`, `wp-gravityview`, `wp-gravity-wiz`, `wp-gravity-stack`, `wp-pods`. Skills are installed to `.agents/skills/` (universal convention) instead of platform-specific directories.
 - CI runs on every push: lint, typecheck, test, build. No publish workflow (manual npm publish only).
 
 ## Pi Extension (Package)
 
 - `pi.extensions`: `./extensions/wp-agent-kit` — registers WordPress agent tools
-- `pi.skills`: `./.agents/skills` — 18 WordPress skills discoverable by Pi (17 upstream + `wp-wpengine` custom from `skills-custom/`). Uses AgentSkills.io convention.
+- `pi.skills`: `./.agents/skills` — 26 WordPress skills discoverable by Pi (17 upstream + 9 custom from `skills-custom/`). Uses AgentSkills.io convention.
 - Tools: `wp_triage`, `wp_install_kit`, `wp_sync_skills`, `wp_upgrade`, `wp_clean_skills`
 - Commands: `/wp-triage`, `/wp-install`, `/wp-sync-skills`, `/wp-upgrade`, `/wp-clean-skills`

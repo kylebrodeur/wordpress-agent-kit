@@ -1,3 +1,66 @@
+## [0.7.0] - 2026-06-27
+
+### Added
+
+- **`wp-gravity-forms` skill** (`skills-custom/wp-gravity-forms/`): Dedicated Gravity Forms skill
+  covering `wp gf` CLI (install, update, form/entry management), `GFAPI` PHP patterns, JSON
+  form versioning, Cloudflare Turnstile anti-spam, MCP-compatible form schema serialization,
+  and remote WP Engine management. Includes `references/gravity-forms-cli.md` and
+  `scripts/gf-inspect.sh` (local + remote audit script).
+
+- **`wp-gravity-smtp` skill** (`skills-custom/wp-gravity-smtp/`): Gravity SMTP skill covering
+  provider configuration (SendGrid, Mailgun, Postmark, Brevo, SES, M365, Google, custom SMTP),
+  credential isolation in `wp-config.php` (not `wp_options`), backup sender/alert setup, and
+  a mandatory **CVE-2026-4020** version check (`wp gf version gravitysmtp` must be ≥ 2.1.5).
+
+- **`wp-gravity-connect` skill** (`skills-custom/wp-gravity-connect/`): Gravity Connect / OpenAI
+  Connection skill. Documents the Fields-vs-Feeds architectural decision (real-time pre-submission
+  vs async post-submission), token ceiling recommendations by task type, OpenRouter model
+  hot-swapping via custom base URL, GPT Image generation, and voice-to-text transcription.
+
+- **`wp-gravityview` skill** (`skills-custom/wp-gravityview/`): GravityKit / GravityView skill
+  covering View creation (list, table, DataTables, map), search/filter, entry approval workflows,
+  edit-entry front-end forms, role/ownership-based access restrictions, shortcodes, GravityActions,
+  GravityBoard, and the **GravityKit WordPress MCP** for surgical block-level AI editing.
+  Developer docs linked to the new [gravitykit.dev](https://www.gravitykit.dev/) portal.
+
+- **`wp-gravity-wiz` skill** (`skills-custom/wp-gravity-wiz/`): Gravity Wiz / Spellbook skill
+  covering unified Spellbook platform installation (replaces legacy individual perk installs),
+  Gravity Perks ecosystem (GP Populate Anything + AI feed hooks, Nested Forms, Advanced Select,
+  Live Preview, Copy Cat, Limit Submissions), and memory-footprint optimization for LLM loops.
+
+- **`wp-pods` skill** (`skills-custom/wp-pods/`): Pods Framework skill. Critical guardrail: always
+  declare `wp_postmeta` vs ACT (Advanced Content Type / custom table) storage to AI agents before
+  writing any queries. Covers `pods_field()` vs `get_post_meta()` patterns, relationship ID arrays,
+  REST API exposure, WordPress Abilities API integration, and the `pods-gravity-forms` add-on.
+
+- **`wp-gravity-stack` skill** (refactored to orchestrator): Repurposed as a meta-skill for full
+  stack setup — SatisPress `composer.json` with version-pinned packages (`gravitysmtp ≥ 2.1.5`),
+  cross-product architecture overview, and links to all individual product skills.
+
+- **`wordpress-ai-gravity-reference.md`** (`wp-gravity-stack/references/`): Comprehensive
+  WordPress + AI development reference guide covering Pods/GF/SMTP/Spellbook/Connect/GravityView
+  architectural patterns, security guardrails (CVE-2026-4020), developer matrix, `.cursorrules`
+  template, and `llms.txt` workspace context template for MCP pipelines.
+
+- **Documentation links updated** across all new skills: `gravitykit.dev` (developer hook docs,
+  Foundation framework, 37 products), `docs.gravityforms.com/category/user-guides/` (incl. 3.0
+  beta), `gravitywiz.com/documentation/gravity-connect/`, `gravitywiz.com/documentation/gravity-perks/`.
+
+### Changed
+
+- **Skill count**: 18 → 26 total skills (17 upstream + 9 custom). New custom skills: `wp-gravity-forms`,
+  `wp-gravity-smtp`, `wp-gravity-connect`, `wp-gravityview`, `wp-gravity-wiz`, `wp-pods`
+  (plus existing `wp-bootstrap`, `wp-wpengine`, `wp-gravity-stack`).
+- **`wp-gravity-stack`**: Removed `gravity-forms-cli.md` (moved to `wp-gravity-forms/references/`)
+  and `gf-inspect.sh` (moved to `wp-gravity-forms/scripts/`). Now functions as a lean orchestrator.
+- **`AGENTS.template.md`**: Extended skill routing table with all 9 custom Gravity/Pods/Bootstrap
+  skills so new projects get correct routing from day one.
+- **`README.md`**: Updated version badge, intro paragraph, directory tree comment, and skills
+  reference table to reflect all 26 skills.
+- **`AGENTS.md`**: Updated skill counts and custom skill list.
+- **Extension (`extensions/wp-agent-kit/index.ts`)**: Updated skill count references (18 → 26).
+
 ## [0.6.0] - 2026-06-27
 
 ### Added

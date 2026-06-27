@@ -1,0 +1,439 @@
+{
+  "version": "0.6.1",
+  "platform": "github",
+  "installedAt": "2026-06-27T05:06:56.632Z",
+  "files": [
+    {
+      "path": "agents/wp-architect.agent.md",
+      "hash": "dd520fb95a6657b58c5283af1f92bf1f2c73e51957752284bf62484b06770267"
+    },
+    {
+      "path": "copilot-instructions.md",
+      "hash": "3631be76ccaeab6b47ace1ab7283179e714b675df7b9390ae9669ce91fe0aef2"
+    },
+    {
+      "path": "instructions/wordpress-workflow.instructions.md",
+      "hash": "9bd81e8e1740e9f5f573ed3ef11d70fa9bdb9dd6d87354b2bd6ae41591b66dcb"
+    },
+    {
+      "path": "prompts/plan-smartDetectionSetup.prompt.md",
+      "hash": "39350cb07aa6234060f8bed2dde5712d77ac3035df2ad5e02debdadabcdb29d0"
+    },
+    {
+      "path": "skills/blueprint/SKILL.md",
+      "hash": "e0d218bbd79ae0a9e6a3a8574f640f543b1a4f56bb962e493eeb789458b7c6a6"
+    },
+    {
+      "path": "skills/wordpress-router/SKILL.md",
+      "hash": "356bc3cd28f36de893a95061f55eeaca508e1980b30da3adc22ffc2988947f0f"
+    },
+    {
+      "path": "skills/wordpress-router/references/decision-tree.md",
+      "hash": "862f6d2fc84fefe44f1f972a1fd0809bba8fea6a2af92b8a3a6ca32de675a1ae"
+    },
+    {
+      "path": "skills/wp-abilities-api/SKILL.md",
+      "hash": "644199bb38add5e60414e6e4f93ad4f7f0ff6e53b39033d482b4b48419b055b6"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/delegate-helper-pattern.md",
+      "hash": "5e570d530a53cdc324069e26766b14402ba421bb709913ee48aa3321e0a55e0d"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/domain-vs-projection.md",
+      "hash": "69cd065482a7faf6ca7b88e0621ed6025d3f8cffceee21e87a9712ad7bf9e5af"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/error-code-vocabulary.md",
+      "hash": "3044edfd7f0046a5d3e0272760513a2a10272641a59ac3c86a55c5ae2eebd658"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/grouping-heuristic.md",
+      "hash": "125247117e9f50802fe28e3f0fec8661c62a3d6f12c08c0f3d464a9ac8211867"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/input-schema-gotchas.md",
+      "hash": "cd5a7a02166a21e78caeb5f634d13891e4ce445238d30fd82a9ca1a3f30f6ca6"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/php-registration.md",
+      "hash": "d2cdc136024ed551c9fd3c2e83c12ec99807af7e674fc0c5a52ed5abbde7dd77"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/plugin-family-patterns.md",
+      "hash": "8a0e16f1ab6aff76441c11b6981877dc248cd96cfae0bcbe0cd601faa9f6f545"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/rest-api.md",
+      "hash": "e58192bed6200dd694b5301918ebbb58612d6f734f7616913fbe4780d5275311"
+    },
+    {
+      "path": "skills/wp-abilities-api/references/shared-core-service.md",
+      "hash": "639da91b3fb0c46a375f13704e7f5f6e800bff21796ffc22c781285e8332327c"
+    },
+    {
+      "path": "skills/wp-abilities-audit/SKILL.md",
+      "hash": "9130ee2312b6205aa2693145d98d42afb22c9b090c2a6f20828f00f4521ca010"
+    },
+    {
+      "path": "skills/wp-abilities-audit/references/audit-schema.md",
+      "hash": "fc2218a72cac147dbeea938b19ade27ee67bff98e1b01e997065b9c66cee1e3e"
+    },
+    {
+      "path": "skills/wp-abilities-audit/references/capability-gate-tracing.md",
+      "hash": "4273115aef9ca63d40b20abdc062088c55cb9fb4bc2ab69d17dee5746c2f3103"
+    },
+    {
+      "path": "skills/wp-abilities-audit/references/controller-enumeration.md",
+      "hash": "7454df9e1f21ddc44490e90edc1cfd1ca35992b257c4754246ab8965d6a712c6"
+    },
+    {
+      "path": "skills/wp-abilities-verify/SKILL.md",
+      "hash": "6829f48d4cff60f37d979b1b3160ae948a174e3fa4356d07abab0ed06f4f5f6f"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/annotation-correctness.md",
+      "hash": "5eadeba8e132336155772b79b43e9bf306c2077670581cb27fdd477cf6586ce7"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/audit-schema-validation.md",
+      "hash": "989e8823d821c371ec3526ccc204ab8cf3ce122d193a1f71b0315e8d3b3edc60"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/permission-roundtrip.md",
+      "hash": "d0e76551f398b6b1b763c80165a795f68f1ff6670e8a80cb1c007b0baee79136"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/runtime-harness.md",
+      "hash": "42f744791618d0ddb2eb2d5ebc6dc7609ad07db8f945343788518a4b3b97292e"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/schema-lints.md",
+      "hash": "4a14215ba849182de0dc75eb5330d5fc1a09fb0b53f8aaad219d85c1e03ce6f7"
+    },
+    {
+      "path": "skills/wp-abilities-verify/references/static-enumeration.md",
+      "hash": "8377032cbc5c23214b0ec7176828e566acc5a72645fbabbd8296b3bead5a3eed"
+    },
+    {
+      "path": "skills/wp-block-development/SKILL.md",
+      "hash": "7189dbd1abacf38b144881dcf1ea289a68335152980b5ef3407b604bde1242a5"
+    },
+    {
+      "path": "skills/wp-block-development/references/attributes-and-serialization.md",
+      "hash": "953725785cda47a6f6fc0ee19d5c96b9b4016300278b68eb64bdaaabf5d41a45"
+    },
+    {
+      "path": "skills/wp-block-development/references/block-json.md",
+      "hash": "a6f9f3f56f75caf54ece9beaa61835fda4fa241afc9c91cc3db39a9c396f2d63"
+    },
+    {
+      "path": "skills/wp-block-development/references/creating-new-blocks.md",
+      "hash": "45a437e3a4bc78e517ed478fb550cdb70c88b5b7bd05fe2b61525c95e2a35e0c"
+    },
+    {
+      "path": "skills/wp-block-development/references/debugging.md",
+      "hash": "eced905202c692f626a4ffbf7282579b1463e0301496e1464d0e917a964e1e77"
+    },
+    {
+      "path": "skills/wp-block-development/references/deprecations.md",
+      "hash": "136b1328823964ae7a7c638398c5662304db5b9d6f45f318a3523705ffd5e937"
+    },
+    {
+      "path": "skills/wp-block-development/references/dynamic-rendering.md",
+      "hash": "fee9acc6909290cf3549f7d23d23cc12fc3003f4db07ba9c49f0e165b2e39dd1"
+    },
+    {
+      "path": "skills/wp-block-development/references/inner-blocks.md",
+      "hash": "06d5b2b929d9e27d7c9114ecb14b2d7ee538d24088d80d1e9b3e49890ce16355"
+    },
+    {
+      "path": "skills/wp-block-development/references/registration.md",
+      "hash": "b5b0386a03b6c5eabcd9076e3067f78231fef471018e88c1bcf4e4745e9d1e9c"
+    },
+    {
+      "path": "skills/wp-block-development/references/supports-and-wrappers.md",
+      "hash": "e4001355e8e6c1117da157881589a2267520a7846666ee7540251114f88f697a"
+    },
+    {
+      "path": "skills/wp-block-development/references/tooling-and-testing.md",
+      "hash": "571c08dbc19c99bfdc59d277189e8391bb7651e6ee3ea8f09c2b7c412a2cf9d5"
+    },
+    {
+      "path": "skills/wp-block-development/scripts/list_blocks.mjs",
+      "hash": "01bd752371dd13d3e8c0b1f7a240eed382c0177594449c102e8853a288023951"
+    },
+    {
+      "path": "skills/wp-block-themes/SKILL.md",
+      "hash": "4a167827d79a586ed2b021762dca1c2961d1773679ac01329d06bd8091c25359"
+    },
+    {
+      "path": "skills/wp-block-themes/references/creating-new-block-theme.md",
+      "hash": "3dcb5bb2ed6c1298b9bb26e3f665f7c3ebebe69e94810a0a0a065fa8a054b774"
+    },
+    {
+      "path": "skills/wp-block-themes/references/debugging.md",
+      "hash": "0176b171471c8873800e1d221fd535940b20ad554629181ce833fc131c4ee789"
+    },
+    {
+      "path": "skills/wp-block-themes/references/patterns.md",
+      "hash": "43a2f184a42a80d4784cb0ce064339aead8d411c18827f7d958b247d633453a4"
+    },
+    {
+      "path": "skills/wp-block-themes/references/style-variations.md",
+      "hash": "6f50b6055d3da1dd89543bbafcef2b726756c1901bedf55574f7f5bc1cbd208d"
+    },
+    {
+      "path": "skills/wp-block-themes/references/templates-and-parts.md",
+      "hash": "05e9491404e434fe66711d4fcb63ceddb52385365ccb5a5c8ce9b7020a859edc"
+    },
+    {
+      "path": "skills/wp-block-themes/references/theme-json.md",
+      "hash": "4547901ab9d3d417fa2fc3cf8f8937cacb3e77611512d447b3235ca405e76baf"
+    },
+    {
+      "path": "skills/wp-block-themes/scripts/detect_block_themes.mjs",
+      "hash": "63bfa8dfbb6d71f615ff62581dec4f361a9da8e11b99ea6faf6c2d9d8c79d13f"
+    },
+    {
+      "path": "skills/wp-interactivity-api/SKILL.md",
+      "hash": "454a9ece056c1c1fe45468c320a817f49afcd032aed6d6372f48f5f94b1a2ae5"
+    },
+    {
+      "path": "skills/wp-interactivity-api/references/debugging.md",
+      "hash": "cdd37f64286979e731a577cf521ed5158ea90095893b3fdc8702f4f9e826ab66"
+    },
+    {
+      "path": "skills/wp-interactivity-api/references/directives-quickref.md",
+      "hash": "8ca55a2636a528ba74fb1edc01caf81e453ff3b5c5aa207391f9b66d25408a7e"
+    },
+    {
+      "path": "skills/wp-interactivity-api/references/server-side-rendering.md",
+      "hash": "49110c3ff77c60f46419e0fcf80a321fc65a0118696a9db82a37c24aa34c65bb"
+    },
+    {
+      "path": "skills/wp-performance/SKILL.md",
+      "hash": "b482631a6c56130b75921078dde47b4dde28855d841c8d3606937fb90f1e60b4"
+    },
+    {
+      "path": "skills/wp-performance/references/autoload-options.md",
+      "hash": "42d8465c18f87d2676281ce09534562d7f8f4a4c39342fab012c1b391458fbc8"
+    },
+    {
+      "path": "skills/wp-performance/references/cron.md",
+      "hash": "54c56935bfd4845515df28c8d6ea801aedd2d5710980ba2f0c3829bf61bd74ff"
+    },
+    {
+      "path": "skills/wp-performance/references/database.md",
+      "hash": "ffc6dc561228f2967f939ff4052711103a010f6c60bca442621ad94a051125de"
+    },
+    {
+      "path": "skills/wp-performance/references/http-api.md",
+      "hash": "bb6a36c4e8287ea589e9c9571822729d6f005ccb1268a7212b21a346cbb22ba3"
+    },
+    {
+      "path": "skills/wp-performance/references/measurement.md",
+      "hash": "906d0a8501b11cffc6bb86fd333bc7e96245124fbcc16a8d398e52ed7059b37e"
+    },
+    {
+      "path": "skills/wp-performance/references/object-cache.md",
+      "hash": "9ee1ffc154564645b60772c1994a7080e376fbebc461ce5e277d92f1c7af8d2a"
+    },
+    {
+      "path": "skills/wp-performance/references/query-monitor-headless.md",
+      "hash": "4985fc2eccfefd3c3e12531972d0a76813b2d8f1935203a1003b4ff2ecb317d1"
+    },
+    {
+      "path": "skills/wp-performance/references/server-timing.md",
+      "hash": "a0f4886d5842cae8b36ff8b801c210fda760f8cb5c0eb958ca11035f499ae341"
+    },
+    {
+      "path": "skills/wp-performance/references/wp-cli-doctor.md",
+      "hash": "0fa33e780f97d246a4db30092bd480ce7487a20d5fe1a558c0068cd822473b77"
+    },
+    {
+      "path": "skills/wp-performance/references/wp-cli-profile.md",
+      "hash": "74f51a3caccde9a2deef9071bef0c70735868bff8a5e51cf9737308cdf59eac6"
+    },
+    {
+      "path": "skills/wp-performance/scripts/perf_inspect.mjs",
+      "hash": "5031a0ce0b81074cbf0fb69be5a60b8031de78f33fe2d6325c0d022165d6b688"
+    },
+    {
+      "path": "skills/wp-phpstan/SKILL.md",
+      "hash": "7ad0988ece320b6663e1045879ac874a31691ef9708f2784d940bc5cfadc0b99"
+    },
+    {
+      "path": "skills/wp-phpstan/references/configuration.md",
+      "hash": "444869ffacca37ea38eb79b01a0ec0ffc8cd68a701282232b058d490fb83aeb7"
+    },
+    {
+      "path": "skills/wp-phpstan/references/third-party-classes.md",
+      "hash": "5cc8488188cdb917e6998f77ded6da136c6fe24a8b0f991efd06d2a03855ab0e"
+    },
+    {
+      "path": "skills/wp-phpstan/references/wordpress-annotations.md",
+      "hash": "340b6299d539ab7fc34357842cd67187ef0ebdcfdca44f5439794f5c3148199a"
+    },
+    {
+      "path": "skills/wp-phpstan/scripts/phpstan_inspect.mjs",
+      "hash": "035a73b0d47de4464bbcbf85f12bafbc432496f5cf393da3ca6071eeee44bb5d"
+    },
+    {
+      "path": "skills/wp-playground/SKILL.md",
+      "hash": "640749cba12ba6947aeca60559b6a44d9a3847785f07562761d54bbc06a05910"
+    },
+    {
+      "path": "skills/wp-playground/references/blueprints.md",
+      "hash": "0f9158e5dc174303b49d246fcf455328d117355ea39eb230efd5073f7a8ba84c"
+    },
+    {
+      "path": "skills/wp-playground/references/cli-commands.md",
+      "hash": "4365e4b84844fa881605d2d00e99d7ee7cb4b24b0b2dc7cef773ec99d05177af"
+    },
+    {
+      "path": "skills/wp-playground/references/debugging.md",
+      "hash": "8c1e3d1db0bcac978292c57f4e96516650e5ae91ea98938a28daf4a03f066bdd"
+    },
+    {
+      "path": "skills/wp-playground/references/e2e-playwright.md",
+      "hash": "5747117fa96053f2448bde53a688172a141995e45fb9f5a48a94fe4f03b36f36"
+    },
+    {
+      "path": "skills/wp-plugin-development/SKILL.md",
+      "hash": "5df81f8a41053f3463e20de603a290d7337dc6cc652bd755d8bffacbb73a604b"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/data-and-cron.md",
+      "hash": "6a21d6a919b536ca8c748649450031ec71b7606845cabb089540dddb0313626f"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/debugging.md",
+      "hash": "045e6cfe9bfc77ddec277d4ce9b2ca3e90d3047281dbe4a58f18b4406c59cb6f"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/lifecycle.md",
+      "hash": "231fb911cff2402b6701591a10e202e86cef0c4ea4d7053168fdd7ba02d0a91e"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/security.md",
+      "hash": "95c92315721242f3ad55eec47518acb3ed833fd9c751adb84cfe45642307cb1b"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/settings-api.md",
+      "hash": "535fde7f0194f6f14e999d6d691f3e9b696d0da2425fa737254628c9c5d20ceb"
+    },
+    {
+      "path": "skills/wp-plugin-development/references/structure.md",
+      "hash": "00ae05f608a594e7be557d41aa8bf3b9240a4ce84986cbf11ab7a419f48fdb03"
+    },
+    {
+      "path": "skills/wp-plugin-development/scripts/detect_plugins.mjs",
+      "hash": "3fe7315c575699e25aea56ad7b2a09f424892a6cfcaba8fbe196617b85844354"
+    },
+    {
+      "path": "skills/wp-plugin-directory-guidelines/SKILL.md",
+      "hash": "97890f42dd60f5183897dcee43e5e7905e65dd451ab97290afc8fe1803e34f3a"
+    },
+    {
+      "path": "skills/wp-plugin-directory-guidelines/references/gpl-compliance.md",
+      "hash": "1f06c457e598870b242af48dbc703a2ab3b3aba0311444aeb7e82ff9490a4be0"
+    },
+    {
+      "path": "skills/wp-plugin-directory-guidelines/references/guideline-review-checklist.md",
+      "hash": "8b382bbf6d3f13c873207d6118c0c7b86a5ac3beeaedfd5c36db75ab749b2455"
+    },
+    {
+      "path": "skills/wp-plugin-directory-guidelines/references/naming-rules.md",
+      "hash": "48b8358b5fa78eadb150394c7e6e9defd9a1a98c3bd0a1b745cc82a89f5920b2"
+    },
+    {
+      "path": "skills/wp-project-triage/SKILL.md",
+      "hash": "f5ba067e06e58795f7f4cee6e15e77bc6ff4f4202a828470e682f66c5780929e"
+    },
+    {
+      "path": "skills/wp-project-triage/references/triage.schema.json",
+      "hash": "f24dd91e56c2268a8026ca97235ada9240c70aded32c1c70985c62af4f306903"
+    },
+    {
+      "path": "skills/wp-project-triage/scripts/detect_wp_project.mjs",
+      "hash": "b89b5e677d92563d063a4848d74b8e898b8b033878d203ae14f76b4cde9e9340"
+    },
+    {
+      "path": "skills/wp-rest-api/SKILL.md",
+      "hash": "6582ed5ca7966c924bf5719932c2c1c77f69ce13b8b46aa6c7cd2d4da647d720"
+    },
+    {
+      "path": "skills/wp-rest-api/references/authentication.md",
+      "hash": "5ec3a866c0d4e956779f1048703835b70f5ba183442ad6a2239d4c1313ae4703"
+    },
+    {
+      "path": "skills/wp-rest-api/references/custom-content-types.md",
+      "hash": "a14caa1cc672022f9773e7fa9fec97f524b59e0a6fe62ea4aa4dcafd53780a75"
+    },
+    {
+      "path": "skills/wp-rest-api/references/discovery-and-params.md",
+      "hash": "7fd320f42b0b3d75f750a84c91d15281eec273701fe4b89fe194a2c323d3f71b"
+    },
+    {
+      "path": "skills/wp-rest-api/references/responses-and-fields.md",
+      "hash": "1a10fe4b8b73d82421456a9e864590bb061d96dc5f4a79c236e74445f404df54"
+    },
+    {
+      "path": "skills/wp-rest-api/references/routes-and-endpoints.md",
+      "hash": "abcb570b61bc114337db7845f6da72d9f3c581d9b3a32997d703be0b586f0b35"
+    },
+    {
+      "path": "skills/wp-rest-api/references/schema.md",
+      "hash": "05e2c9557d9d8a89010ac1b0f7b17dadbdf596490bcecedfc62c3c4a28333a4e"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/SKILL.md",
+      "hash": "a073c34b8622f76d27ad837c68244b51b9d01c9144c4118476a63bbc4bf8b49c"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/automation.md",
+      "hash": "06b967e13ad5f6e02df1a520987c06dc0b6ffcb289ea4e92bf1df66169bd70aa"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/cron-and-cache.md",
+      "hash": "670c3a996fba891b64589e419265ae27b95705aebed3eeee3bfb331f0762bffe"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/debugging.md",
+      "hash": "50105f756f8562d6bef454623c196614fba914c23136b7f4c0653ac550c4a388"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/multisite.md",
+      "hash": "44e4322ce8fec4a4f5ed65b7cf7509b958fb314f756fc3e0d5ed4453fe229413"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/packages-and-updates.md",
+      "hash": "6b619fc294734078b758121e6bfab6e36e7de119a6a3a50bf3d004749136420d"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/safety.md",
+      "hash": "74628dbc5b0a6b78df40e2bcc4a1c2f9038ad2f0fe08734591868d944aa2d3fb"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/references/search-replace.md",
+      "hash": "8d2f85dc118eb1c30240d1560886dcf44ff876d2ebc2b7c22d7ed7160e54fc91"
+    },
+    {
+      "path": "skills/wp-wpcli-and-ops/scripts/wpcli_inspect.mjs",
+      "hash": "156d432ad3867fa9e8d53d09c0614350c4d9e2f6909b861779de9b137e0857c1"
+    },
+    {
+      "path": "skills/wp-wpengine/SKILL.md",
+      "hash": "1c8512bf3c37a8c214d8506d1618446e2af634e612d71b202d7340e6225ac526"
+    },
+    {
+      "path": "skills/wpds/SKILL.md",
+      "hash": "e963f0926d2c9ad246f69048594244c67e127ae73fc639d0a579f983b22e6da0"
+    },
+    {
+      "path": "workflows/ci.yml",
+      "hash": "a58e001b61244d571f3b1e0b2d610b0a3682eb1559281547a0dcb3d10989ca1d"
+    }
+  ]
+}

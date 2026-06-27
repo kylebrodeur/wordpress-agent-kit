@@ -31,6 +31,14 @@ This repository is WordPress-centric (plugin, theme, block theme, or site). Agen
    - For Performance profiling: `wp-performance`
    - For PHPStan static analysis: `wp-phpstan`
    - For WP Engine hosting: `wp-wpengine` (optional, requires env vars)
+   - For project bootstrapping (monorepo, Composer, SatisPress, CI): `wp-bootstrap`
+   - For Gravity Forms (forms, entries, CLI): `wp-gravity-forms`
+   - For Gravity SMTP (email delivery, CVE-2026-4020): `wp-gravity-smtp`
+   - For Gravity Connect (OpenAI Fields/Feeds, OpenRouter): `wp-gravity-connect`
+   - For GravityView / GravityKit (front-end entry display): `wp-gravityview`
+   - For Gravity Wiz / Spellbook / Perks: `wp-gravity-wiz`
+   - For Pods Framework (CPTs, ACTs, custom fields): `wp-pods`
+   - For full Gravity stack setup / SatisPress / `.cursorrules`: `wp-gravity-stack`
    - For Design System components: `wpds`
    - For plugin directory submission: `wp-plugin-directory-guidelines`
 

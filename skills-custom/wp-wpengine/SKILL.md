@@ -549,6 +549,12 @@ wp option update upload_url_path 'https://dev.yoursite.wpengine.com/wp-content/u
 > local WordPress loads real images from production/staging without syncing any files.
 > Much faster than rsync for GBs of media. Reset it with `wp option delete upload_url_path`
 > before deploying.
+>
+> **Partial-sync alternative**: If you've copied over some recent uploads locally (to
+> regenerate image sizes etc.) but want older months to fall back to production,
+> use [BE Media from Production](https://github.com/billerickson/BE-Media-from-Production)
+> instead. It filters image URLs by date range rather than redirecting everything.
+> `upload_url_path` is simpler and works well when you have no local uploads at all.
 
 To also sync actual upload files (when you need local file access, not just URLs):
 

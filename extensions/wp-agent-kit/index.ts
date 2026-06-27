@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
  * WordPress Agent Kit — Pi Extension
  *
  * Provides Pi Coding Agent with WordPress development tools:
- * - 18 WordPress agent skills (17 upstream + wp-wpengine custom) at .agents/skills/ (AgentSkills.io convention)
+ * - 26 WordPress agent skills (17 upstream + 9 custom) at .agents/skills/ (AgentSkills.io convention)
  * - Project triage detection
  * - Skill installation, syncing, upgrade, orphan cleanup, and project bootstrapping
  *
@@ -161,7 +161,7 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_install_kit',
 		label: 'WP Install Kit',
 		description:
-			'Install WordPress Agent Kit into a project directory. Copies 18 WordPress skills to .agents/skills/ (AgentSkills.io convention), platform-specific agents/instructions/prompts, and an AGENTS.md template. Safe by default — preserves user modifications on re-run.',
+			'Install WordPress Agent Kit into a project directory. Copies 26 WordPress skills to .agents/skills/ (AgentSkills.io convention), platform-specific agents/instructions/prompts, and an AGENTS.md template. Safe by default — preserves user modifications on re-run.',
 		promptSnippet: 'Install WordPress AI agent skills and configuration into a project',
 		promptGuidelines: [
 			'Use wp_install_kit when setting up a new WordPress project for AI agent development.',

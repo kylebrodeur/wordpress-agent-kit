@@ -13,7 +13,8 @@
 			"**/coverage/**",
 			"**/.agents/**",
 			"**/skills-custom/**",
-			"**/vendor/**"
+			"**/vendor/**",
+			".wp-agent-kit-manifest.*.json"
 		],
 		"ignoreUnknown": true
 	},

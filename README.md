@@ -2,11 +2,11 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
-**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 17 specialized WordPress agent skills (plus an optional WP Engine skill), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
+**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 26 WordPress agent skills (17 upstream + 9 custom: bootstrap, WP Engine, Gravity Forms, SMTP, Connect, GravityView, Gravity Wiz, Pods, and the stack orchestrator), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
 
@@ -36,7 +36,7 @@ my-plugin/
 ├── AGENTS.md                  # Project-specific agent instructions
 ├── AGENTS.template.md         # Template reference for future updates
 ├── .agents/
-│   └── skills/                  # 18 WordPress skills (AgentSkills.io convention)
+│   └── skills/                  # 26 WordPress skills (17 upstream + 9 custom, AgentSkills.io convention)
 │       ├── wp-project-triage/       # Project detection
 │       ├── wp-plugin-development/   # Plugin architecture
 │       ├── wp-block-development/    # Gutenberg blocks
@@ -232,7 +232,7 @@ console.log(triage.data.project.primary); // "plugin"
 
 ## Skills Reference
 
-All 18 skills follow the [AgentSkills.io](https://agentskills.io) specification. Skills in `skills-custom/` are project-specific (not from upstream) and survive `sync-skills`:
+All 26 skills follow the [AgentSkills.io](https://agentskills.io) specification. The 17 upstream skills come from the [WordPress/agent-skills](https://github.com/WordPress/agent-skills) repository. Skills in `skills-custom/` (9 total) are project-specific and survive `sync-skills`:
 
 | Skill                                  | When to Use                                                                        |
 | -------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -253,7 +253,15 @@ All 18 skills follow the [AgentSkills.io](https://agentskills.io) specification.
 | `wpds`                                 | Build UIs with the WordPress Design System                                         |
 | `wp-plugin-directory-guidelines`       | GPL compliance, naming, slug rules for WP.org submission                           |
 | `wordpress-router`                     | Route/classify repository type and select appropriate skills                       |
-| **`wp-wpengine`** _(optional, custom)_ | **WP Engine git push, install/domain/cache/backup management via wpe-labs skills** |
+| **`wp-wpengine`** _(custom)_           | WP Engine git push, install/domain/cache/backup management via wpe-labs skills     |
+| **`wp-bootstrap`** _(custom)_          | Scaffold new projects: monorepo detection, Composer, SatisPress, Playground, CI    |
+| **`wp-gravity-forms`** _(custom)_      | Gravity Forms: `wp gf` CLI, GFAPI, JSON form versioning, anti-spam, MCP schemas    |
+| **`wp-gravity-smtp`** _(custom)_       | Gravity SMTP: delivery, credential isolation, CVE-2026-4020 patch check            |
+| **`wp-gravity-connect`** _(custom)_    | Gravity Connect: OpenAI Fields/Feeds, token ceilings, OpenRouter, GPT Image        |
+| **`wp-gravityview`** _(custom)_        | GravityView: front-end entry display, search, approval, ownership, GravityKit MCP  |
+| **`wp-gravity-wiz`** _(custom)_        | Spellbook, Gravity Perks (GP Populate Anything, Nested Forms, Advanced Select)     |
+| **`wp-gravity-stack`** _(custom)_      | Stack orchestrator: SatisPress `composer.json`, `.cursorrules`, `llms.txt`         |
+| **`wp-pods`** _(custom)_               | Pods Framework: CPTs, ACTs, custom fields, relationship arrays, REST/Abilities API  |
 
 ---
 
