@@ -6,7 +6,7 @@ import { cleanSkillsCommand } from './commands/clean-skills.js';
 import { installCommand } from './commands/install.js';
 import { runPlaygroundCommand } from './commands/run-playground.js';
 import { setupCommand } from './commands/setup.js';
-import { syncSkillsCommand } from './commands/sync-skills.js';
+import { skillsCommand } from './commands/skills.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { ExitCode } from './utils/exit-codes.js';
 import { createFormatter } from './utils/output.js';
@@ -35,8 +35,8 @@ program.addCommand(bootstrapCommand);
 program.addCommand(cleanSkillsCommand);
 program.addCommand(installCommand);
 program.addCommand(setupCommand);
-program.addCommand(syncSkillsCommand);
 program.addCommand(runPlaygroundCommand);
+program.addCommand(skillsCommand);
 program.addCommand(upgradeCommand);
 
 // Global error handler

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type InstallKitResult, installKit } from '../../src/lib/installer.js';
 import { PACKAGE_ROOT } from '../../src/utils/paths.js';
 
@@ -8,7 +8,7 @@ vi.mock('node:fs');
 
 describe('installKit', () => {
 	const mockTargetDir = '/test/target';
-	let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+	let consoleLogSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -98,6 +98,7 @@ export const installCommand = new Command('install')
 				);
 			}
 			console.log(`  Duration: ${data.durationMs}ms`);
+			console.log('  Run `wp-agent-kit skills install` to install WordPress skills.');
 		} else if (isDryRunResult(result)) {
 			const summary = result.data.summary;
 			if (isUpdate) {

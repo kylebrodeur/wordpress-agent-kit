@@ -12,7 +12,7 @@
 			"**/node_modules/**",
 			"**/coverage/**",
 			"**/.agents/**",
-			"**/skills-custom/**",
+			"**/skills/**",
 			"**/vendor/**",
 			".wp-agent-kit-manifest.*.json"
 		],

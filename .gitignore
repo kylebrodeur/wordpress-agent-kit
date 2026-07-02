@@ -4,6 +4,8 @@ dist/
 node_modules/
 coverage/
 vendor/wp-agent-skills/
+# Dev-generated skills directory (populated by `wp-agent-kit skills install`)
+.agents/skills/
 package-lock.json
 
 # Upstream sync buffer — canonical skills live in .agents/skills/

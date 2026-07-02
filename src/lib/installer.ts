@@ -17,81 +17,6 @@ export const PLATFORM_FOLDERS: Record<Platform, string> = {
 	pi: '.pi/agent',
 };
 
-/**
- * Copy universal skills from .agents/skills/ to the target directory.
- * Uses the AgentSkills.io convention (.agents/skills/) which is discovered
- * automatically by Pi, GitHub Copilot, and other agents.
- */
-function copyUniversalSkills(targetDir: string): {
-	copied: string[];
-	skipped: string[];
-} {
-	const sourceSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
-	const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
-	const copied: string[] = [];
-	const skipped: string[] = [];
-
-	if (!fs.existsSync(sourceSkillsDir)) {
-		return { copied, skipped };
-	}
-
-	if (!fs.existsSync(targetSkillsDir)) {
-		fs.mkdirSync(targetSkillsDir, { recursive: true });
-	}
-
-	for (const skillName of fs.readdirSync(sourceSkillsDir)) {
-		const src = path.join(sourceSkillsDir, skillName);
-		if (!fs.statSync(src).isDirectory()) continue;
-
-		const dest = path.join(targetSkillsDir, skillName);
-		if (fs.existsSync(dest)) {
-			skipped.push(skillName);
-		} else {
-			fs.cpSync(src, dest, { recursive: true });
-			copied.push(skillName);
-		}
-	}
-
-	return { copied, skipped };
-}
-
-/**
- * Merge custom skills from skills-custom/ into the target's universal skills directory.
- * Only copies skills that don't already exist in the target (avoids overwriting
- * upstream versions that may have been user-modified).
- * Returns arrays of skill names that were merged or skipped.
- */
-function mergeCustomSkills(targetDir: string): {
-	merged: string[];
-	skipped: string[];
-} {
-	const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
-	if (!fs.existsSync(customSkillsDir)) {
-		return { merged: [], skipped: [] };
-	}
-
-	const targetSkills = path.join(targetDir, '.agents', 'skills');
-	const merged: string[] = [];
-	const skipped: string[] = [];
-
-	for (const skillName of fs.readdirSync(customSkillsDir)) {
-		const src = path.join(customSkillsDir, skillName);
-		if (!fs.statSync(src).isDirectory()) continue;
-
-		const dest = path.join(targetSkills, skillName);
-		if (fs.existsSync(dest)) {
-			// Don't overwrite — upstream or user version takes priority
-			skipped.push(skillName);
-		} else {
-			fs.mkdirSync(path.dirname(dest), { recursive: true });
-			fs.cpSync(src, dest, { recursive: true });
-			merged.push(skillName);
-		}
-	}
-
-	return { merged, skipped };
-}
-
 /** Options for installKit */
 export interface InstallKitOptions {
 	targetDir: string;
@@ -272,24 +197,6 @@ function fullInstall(targetDir: string, platform: Platform, _force: boolean): In
 		filesSkipped.push(`.agents/skills/${skill} (already existed, removed legacy copy)`);
 	}
 
-	// Copy universal skills to .agents/skills/ (AgentSkills.io convention)
-	const universalResult = copyUniversalSkills(targetDir);
-	for (const skill of universalResult.copied) {
-		filesCreated.push(`.agents/skills/${skill}`);
-	}
-	for (const skill of universalResult.skipped) {
-		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
-	}
-
-	// Merge custom skills from skills-custom/ (e.g., wp-wpengine)
-	const customResult = mergeCustomSkills(targetDir);
-	for (const skill of customResult.merged) {
-		filesCreated.push(`.agents/skills/${skill}`);
-	}
-	for (const skill of customResult.skipped) {
-		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
-	}
-
 	// Copy AGENTS.md template
 	const targetAgentsTemplate = path.join(targetDir, 'AGENTS.template.md');
 	if (fs.existsSync(templatePath)) {
@@ -356,35 +263,6 @@ function safeUpdateInstall(
 		filesCreated.push('AGENTS.md (from template)');
 	} else {
 		filesSkipped.push('AGENTS.md (preserved)');
-	}
-
-	// Migrate legacy skills from platform-specific dir to .agents/skills/
-	const migrationResult = migrateLegacySkills(targetDir, platform);
-	for (const skill of migrationResult.migrated) {
-		filesCreated.push(
-			`.agents/skills/${skill} (migrated from ${PLATFORM_FOLDERS[platform]}/skills/)`
-		);
-	}
-	for (const skill of migrationResult.removed) {
-		filesSkipped.push(`.agents/skills/${skill} (already existed, removed legacy copy)`);
-	}
-
-	// Copy universal skills to .agents/skills/ (AgentSkills.io convention)
-	const universalResult = copyUniversalSkills(targetDir);
-	for (const skill of universalResult.copied) {
-		filesCreated.push(`.agents/skills/${skill}`);
-	}
-	for (const skill of universalResult.skipped) {
-		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
-	}
-
-	// Merge custom skills from skills-custom/ (e.g., wp-wpengine)
-	const customResult = mergeCustomSkills(targetDir);
-	for (const skill of customResult.merged) {
-		filesCreated.push(`.agents/skills/${skill}`);
-	}
-	for (const skill of customResult.skipped) {
-		filesSkipped.push(`.agents/skills/${skill} (already exists, preserved)`);
 	}
 
 	return {
