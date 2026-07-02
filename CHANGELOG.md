@@ -1,4 +1,4 @@
-## [Unreleased] — Simplify to pure npx skills marketplace
+## [0.8.0] - 2026-07-02 — Simplify to pure npx skills marketplace
 
 ### Changed
 
