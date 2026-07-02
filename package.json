@@ -52,7 +52,7 @@
 	},
 	"dependencies": {
 		"@clack/prompts": "^0.8.2",
-		"commander": "^13.0.0"
+		"commander": "^15.0.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
