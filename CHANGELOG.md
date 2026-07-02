@@ -1,3 +1,16 @@
+## [0.8.1] - 2026-07-02 — Docs: fix outdated information
+
+### Fixed
+
+- **README version badge**: 0.7.0 → 0.8.x.
+- **README Scenario 2 (existing project)**: was running a skill script (`wp-project-triage/scripts/detect_wp_project.mjs`) before skills were installed — broken since `install` no longer copies skills. Now installs skills (`wp-agent-kit skills install`) before `setup --auto` (which runs triage internally).
+- **AGENTS.md toolchain**: lint/format is Biome-only (ESLint/Prettier were dropped); dev commands use `pnpm`.
+- **AGENTS.md Pi extension**: `resources_discover` description corrected — serves the repo's `skills/` (our 9) as a dev convenience and is a no-op in npm installs (skills are not shipped); run `wp_skills_install` to populate `.agents/skills/`.
+
+### Removed
+
+- **RELEASE_NOTES.md**: stale v0.2.0-era artifact (bundle downloads, `--reset` flag); superseded by CHANGELOG.md.
+
 ## [0.8.0] - 2026-07-02 — Simplify to pure npx skills marketplace
 
 ### Changed
