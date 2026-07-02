@@ -9,7 +9,7 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 - **Prompting**: `@clack/prompts`
 - **Build**: `tsc` (TypeScript Compiler)
 - **Test**: `vitest`
-- **Lint/Format**: Biome + ESLint
+- **Lint/Format**: Biome
 
 ## Architecture
 
@@ -30,12 +30,12 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 
 ## Development Workflow
 
-- **Run locally**: `npm run dev` (uses `tsx src/cli.ts`)
-- **Build**: `npm run build` (outputs to `dist/`)
-- **TypeCheck**: `npm run check` (no-emit type checking)
-- **Test**: `npm test` (runs Vitest)
-- **Lint**: `npm run lint:check` (ESLint + Biome)
-- **Format**: `npm run format` (Prettier + Biome)
+- **Run locally**: `pnpm dev` (uses `tsx src/cli.ts`)
+- **Build**: `pnpm build` (outputs to `dist/`)
+- **TypeCheck**: `pnpm check` (no-emit type checking)
+- **Test**: `pnpm test:run` (runs Vitest)
+- **Lint**: `pnpm lint:check` (Biome)
+- **Format**: `pnpm format` (Biome)
 - **Pre-commit**: Husky runs lint:check + test:run
 
 ## Key Commands
@@ -70,6 +70,6 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 ## Pi Extension (Package)
 
 - `pi.extensions`: `./extensions/wp-agent-kit` — registers WordPress agent tools
-- `pi.skills`: removed — Pi auto-discovers `.agents/skills/` from the project cwd (AgentSkills.io convention). The extension's `resources_discover` handler serves the package's 26 skills when the project has no `.agents/skills/` of its own; stays silent otherwise to avoid name-collision warnings.
+- `pi.skills`: removed — Pi auto-discovers `.agents/skills/` from the project cwd (AgentSkills.io convention). The extension's `resources_discover` handler serves the repo's bundled custom skills (`skills/`, our 9) as a convenience when the project has no `.agents/skills/` of its own and `skills/` is present (dev checkout); in an npm install (skills/ not shipped) it is a no-op — run `wp_skills_install` to populate `.agents/skills/`. Stays silent once `.agents/skills/` exists to avoid name-collision warnings.
 - Tools: `wp_triage`, `wp_install_kit`, `wp_skills_install`, `wp_skills_update`, `wp_upgrade`, `wp_clean_skills`
 - Commands: `/wp-triage`, `/wp-install`, `/wp-skills-install`, `/wp-skills-update`, `/wp-upgrade`, `/wp-clean-skills`

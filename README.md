@@ -2,7 +2,7 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.7.0-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
@@ -66,13 +66,13 @@ my-plugin/
 ### Scenario 2: Existing WordPress Project
 
 ```bash
-# 1. Install kit (preserves your existing AGENTS.md)
+# 1. Install kit (platform agents + AGENTS.md template — preserves your existing AGENTS.md)
 npx wp-agent-kit install /path/to/existing-plugin --platform github
 
-# 2. Run triage to detect your project's type, tech stack, and tooling
-node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
+# 2. Install skills (our 9 + 17 upstream into .agents/skills/)
+npx wp-agent-kit skills install /path/to/existing-plugin
 
-# 3. Configure based on detection (headless)
+# 3. Configure based on auto-detected project type (headless; preserves your AGENTS.md)
 npx wp-agent-kit setup /path/to/existing-plugin --auto
 
 # Or specify explicitly
