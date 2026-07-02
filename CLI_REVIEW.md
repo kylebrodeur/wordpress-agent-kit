@@ -210,7 +210,7 @@ wp-agent-kit --version --json
 wp-agent-kit setup /workspace/my-plugin --auto --json
 # {"success":true,"applied":{"projectType":"plugin","techStack":["gutenberg","npm"]},"filesModified":["AGENTS.md"]}
 
-# 2. Agent installs skills (custom bundle + upstream pull)
+# 2. Agent installs skills (our 9 via npx skills add kylebrodeur/wordpress-agent-kit + 17 upstream via npx skills add WordPress/agent-skills)
 wp-agent-kit skills install --json
 # {"success":true,"skillsInstalled":26,"custom":9,"upstream":17}
 

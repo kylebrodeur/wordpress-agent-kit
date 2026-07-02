@@ -67,13 +67,11 @@ export interface InstallOptions {
 	backup?: boolean;
 }
 
-/** Result of a skills install/update operation */
+/** Result of a skills install/update operation (one entry per `npx skills` source). */
 export interface SkillsApiResult {
 	targetDir: string;
-	customSkills: string[];
-	upstreamSuccess: boolean;
-	upstreamCommand?: string;
-	upstreamError?: string;
+	sources: { source: string; command: string; success: boolean; error?: string }[];
+	allSuccess: boolean;
 	warnings: string[];
 	durationMs: number;
 	dryRun: boolean;
@@ -83,17 +81,12 @@ export interface SkillsApiResult {
 export interface InstallSkillsOptions {
 	targetDir: string;
 	dryRun?: boolean;
-	force?: boolean;
-	agent?: string;
-	projectDir?: string;
-	global?: boolean;
 }
 
 /** Options for updateSkillsApi */
 export interface UpdateSkillsOptions {
 	targetDir: string;
 	dryRun?: boolean;
-	force?: boolean;
 }
 
 /** Triage detection result */
@@ -331,47 +324,33 @@ function dryRunInstall(
  * Install skills programmatically.
  * Copies our nine vendored custom skills, then fetches upstream skills via `npx skills`.
  */
+/**
+ * Install skills programmatically.
+ * Pulls our nine custom skills (kylebrodeur/wordpress-agent-kit) and the seventeen
+ * upstream skills (WordPress/agent-skills) into the target's .agents/skills/ via `npx skills`.
+ */
 export async function installSkillsApi(
 	options: InstallSkillsOptions
 ): Promise<ApiResult<SkillsApiResult>> {
-	const startTime = Date.now();
 	const formatter = new OutputFormatter('json', 'skills-install', '0.0.0');
 
 	try {
 		if (options.dryRun) {
 			const plan = installSkills(options.targetDir, { dryRun: true });
-			const actions: DryRunResult<SkillsApiResult>['actions'] = [
-				{
-					type: 'copy',
-					source: path.join(PACKAGE_ROOT, 'skills'),
-					target: path.join(plan.targetDir, '.agents', 'skills'),
-					description: `Copy ${plan.customSkills.length} custom skills`,
-				},
-				{
-					type: 'create',
-					target: plan.targetDir,
-					description: plan.upstreamCommand || 'Install upstream skills',
-				},
-			];
+			const actions: DryRunResult<SkillsApiResult>['actions'] = plan.sources.map((s) => ({
+				type: 'create',
+				target: plan.targetDir,
+				description: s.command,
+			}));
 			return formatter.success<DryRunResult<SkillsApiResult>>({
 				wouldExecute: true,
 				actions,
-				summary: plan as SkillsApiResult,
+				summary: plan,
 			});
 		}
 
-		const result = installSkills(options.targetDir, options);
-
-		return formatter.success({
-			targetDir: result.targetDir,
-			customSkills: result.customSkills,
-			upstreamSuccess: result.upstreamSuccess,
-			upstreamCommand: result.upstreamCommand,
-			upstreamError: result.upstreamError,
-			warnings: result.warnings,
-			durationMs: Date.now() - startTime,
-			dryRun: false,
-		});
+		const result = installSkills(options.targetDir, {});
+		return formatter.success(result);
 	} catch (error: unknown) {
 		const err = error as Error & { code?: string; exitCode?: ExitCode };
 		return formatter.fail({
@@ -387,47 +366,33 @@ export async function installSkillsApi(
  * Update skills programmatically.
  * Re-copies our nine vendored custom skills and runs `npx skills update`.
  */
+/**
+ * Update skills programmatically.
+ * Runs `npx skills update` to refresh every skill tracked in skills-lock.json
+ * (our nine and the seventeen upstream) in the target's .agents/skills/.
+ */
 export async function updateSkillsApi(
 	options: UpdateSkillsOptions
 ): Promise<ApiResult<SkillsApiResult>> {
-	const startTime = Date.now();
 	const formatter = new OutputFormatter('json', 'skills-update', '0.0.0');
 
 	try {
 		if (options.dryRun) {
 			const plan = updateSkills(options.targetDir, { dryRun: true });
-			const actions: DryRunResult<SkillsApiResult>['actions'] = [
-				{
-					type: 'copy',
-					source: path.join(PACKAGE_ROOT, 'skills'),
-					target: path.join(plan.targetDir, '.agents', 'skills'),
-					description: `Update ${plan.customSkills.length} custom skills`,
-				},
-				{
-					type: 'update',
-					target: plan.targetDir,
-					description: plan.upstreamCommand || 'Update upstream skills',
-				},
-			];
+			const actions: DryRunResult<SkillsApiResult>['actions'] = plan.sources.map((s) => ({
+				type: 'update',
+				target: plan.targetDir,
+				description: s.command,
+			}));
 			return formatter.success<DryRunResult<SkillsApiResult>>({
 				wouldExecute: true,
 				actions,
-				summary: plan as SkillsApiResult,
+				summary: plan,
 			});
 		}
 
-		const result = updateSkills(options.targetDir, options);
-
-		return formatter.success({
-			targetDir: result.targetDir,
-			customSkills: result.customSkills,
-			upstreamSuccess: result.upstreamSuccess,
-			upstreamCommand: result.upstreamCommand,
-			upstreamError: result.upstreamError,
-			warnings: result.warnings,
-			durationMs: Date.now() - startTime,
-			dryRun: false,
-		});
+		const result = updateSkills(options.targetDir, {});
+		return formatter.success(result);
 	} catch (error: unknown) {
 		const err = error as Error & { code?: string; exitCode?: ExitCode };
 		return formatter.fail({

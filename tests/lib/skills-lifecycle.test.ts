@@ -1,11 +1,12 @@
 import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CUSTOM_SKILL_NAMES, installSkills, updateSkills } from '../../src/lib/skills-lifecycle.js';
-import { PACKAGE_ROOT } from '../../src/utils/paths.js';
+import {
+	OUR_SKILLS_SOURCE,
+	UPSTREAM_SKILLS_SOURCE,
+	installSkills,
+	updateSkills,
+} from '../../src/lib/skills-lifecycle.js';
 
-vi.mock('node:fs');
 vi.mock('node:child_process', () => ({
 	spawnSync: vi.fn(),
 }));
@@ -18,14 +19,6 @@ describe('skills lifecycle', () => {
 		originalIsTTY = process.stdout.isTTY;
 		process.stdout.isTTY = false;
 		vi.clearAllMocks();
-		vi.mocked(fs.existsSync).mockReturnValue(true);
-		vi.mocked(fs.statSync).mockReturnValue({
-			isDirectory: () => true,
-		} as fs.Stats);
-		vi.mocked(fs.readdirSync).mockReturnValue([...CUSTOM_SKILL_NAMES] as unknown as fs.Dirent[]);
-		vi.mocked(fs.cpSync).mockReturnValue(undefined);
-		vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
-		vi.mocked(fs.rmSync).mockReturnValue(undefined);
 		vi.mocked(spawnSync).mockReturnValue({
 			status: 0,
 			stdout: '',
@@ -38,94 +31,114 @@ describe('skills lifecycle', () => {
 	});
 
 	describe('installSkills', () => {
-		it('copies all custom skills from package skills/ to target .agents/skills/', () => {
+		it('spawns npx skills add for our source and the upstream source, targeting .agents/skills', () => {
 			installSkills(mockTargetDir);
 
-			for (const skillName of CUSTOM_SKILL_NAMES) {
-				expect(fs.cpSync).toHaveBeenCalledWith(
-					path.join(PACKAGE_ROOT, 'skills', skillName),
-					path.join(mockTargetDir, '.agents', 'skills', skillName),
-					{ recursive: true, force: true }
-				);
+			expect(spawnSync).toHaveBeenCalledTimes(2);
+			const calls = vi.mocked(spawnSync).mock.calls;
+			// First call: our 9 custom skills
+			expect(calls[0]?.[0]).toBe('npx');
+			expect(calls[0]?.[1]).toEqual([
+				'skills',
+				'add',
+				OUR_SKILLS_SOURCE,
+				'--agent',
+				'cursor',
+				'--yes',
+			]);
+			// Second call: the 17 upstream skills
+			expect(calls[1]?.[0]).toBe('npx');
+			expect(calls[1]?.[1]).toEqual([
+				'skills',
+				'add',
+				UPSTREAM_SKILLS_SOURCE,
+				'--agent',
+				'cursor',
+				'--yes',
+			]);
+		});
+
+		it('runs both npx skills invocations with cwd set to the resolved target', () => {
+			installSkills(mockTargetDir);
+
+			for (const call of vi.mocked(spawnSync).mock.calls) {
+				expect(call?.[2]?.cwd).toBe(mockTargetDir);
 			}
 		});
 
-		it('spawns npx skills add WordPress/agent-skills --yes in target directory', () => {
-			installSkills(mockTargetDir);
+		it('reports allSuccess only when every source succeeds', () => {
+			vi.mocked(spawnSync)
+				.mockReturnValueOnce({ status: 0, stdout: '', stderr: '' } as SpawnSyncReturns<string>)
+				.mockReturnValueOnce({ status: 1, stdout: '', stderr: 'boom' } as SpawnSyncReturns<string>);
 
-			expect(spawnSync).toHaveBeenCalledWith(
-				'npx',
-				['skills', 'add', 'WordPress/agent-skills', '--yes'],
-				expect.objectContaining({ cwd: mockTargetDir, encoding: 'utf-8' })
-			);
+			const result = installSkills(mockTargetDir);
+
+			expect(result.allSuccess).toBe(false);
+			expect(result.sources).toHaveLength(2);
+			expect(result.sources[0]?.success).toBe(true);
+			expect(result.sources[1]?.success).toBe(false);
+			expect(result.sources[1]?.error).toBe('boom');
 		});
 
-		it('passes --agent, --project-dir, and --global through to npx skills add', () => {
-			installSkills(mockTargetDir, {
-				agent: 'claude',
-				projectDir: '/some/dir',
-				global: true,
-			});
-
-			expect(spawnSync).toHaveBeenCalledWith(
-				'npx',
-				[
-					'skills',
-					'add',
-					'WordPress/agent-skills',
-					'--yes',
-					'--agent',
-					'claude',
-					'--project-dir',
-					'/some/dir',
-					'--global',
-				],
-				expect.anything()
-			);
-		});
-
-		it('dry-run returns a plan without copying or spawning', () => {
-			const result = installSkills(mockTargetDir, { dryRun: true });
-
-			expect(result.dryRun).toBe(true);
-			expect(result.customSkills).toEqual([...CUSTOM_SKILL_NAMES]);
-			expect(result.upstreamCommand).toBe('npx skills add WordPress/agent-skills --yes');
-			expect(fs.cpSync).not.toHaveBeenCalled();
-			expect(spawnSync).not.toHaveBeenCalled();
-		});
-
-		it('captures upstream failure without throwing', () => {
+		it('does not throw when npx skills fails — captures the error instead', () => {
 			vi.mocked(spawnSync).mockReturnValue({
 				status: 1,
 				stdout: '',
-				stderr: 'network error',
+				stderr: 'network down',
 			} as SpawnSyncReturns<string>);
 
 			const result = installSkills(mockTargetDir);
 
-			expect(result.upstreamSuccess).toBe(false);
-			expect(result.upstreamError).toContain('network error');
+			expect(result.allSuccess).toBe(false);
+			expect(result.sources.every((s) => !s.success)).toBe(true);
+			expect(result.sources.every((s) => s.error === 'network down')).toBe(true);
+		});
+
+		it('dry-run returns a plan with both commands and never spawns', () => {
+			const result = installSkills(mockTargetDir, { dryRun: true });
+
+			expect(spawnSync).not.toHaveBeenCalled();
+			expect(result.dryRun).toBe(true);
+			expect(result.sources).toHaveLength(2);
+			expect(result.sources[0]?.source).toBe(OUR_SKILLS_SOURCE);
+			expect(result.sources[1]?.source).toBe(UPSTREAM_SKILLS_SOURCE);
+			expect(result.sources[0]?.command).toContain('npx skills add');
+			expect(result.sources[1]?.command).toContain('--agent cursor');
 		});
 	});
 
 	describe('updateSkills', () => {
-		it('copies custom skills and spawns npx skills update --yes', () => {
-			updateSkills(mockTargetDir);
+		it('spawns a single npx skills update --yes in the target directory', () => {
+			const result = updateSkills(mockTargetDir);
 
-			expect(spawnSync).toHaveBeenCalledWith(
-				'npx',
-				['skills', 'update', '--yes'],
-				expect.objectContaining({ cwd: mockTargetDir, encoding: 'utf-8' })
-			);
+			expect(spawnSync).toHaveBeenCalledTimes(1);
+			const call = vi.mocked(spawnSync).mock.calls[0];
+			expect(call?.[0]).toBe('npx');
+			expect(call?.[1]).toEqual(['skills', 'update', '--yes']);
+			expect(call?.[2]?.cwd).toBe(mockTargetDir);
+			expect(result.allSuccess).toBe(true);
 		});
 
-		it('dry-run returns a plan without copying or spawning', () => {
+		it('reports failure when npx skills update fails', () => {
+			vi.mocked(spawnSync).mockReturnValue({
+				status: 1,
+				stdout: '',
+				stderr: 'no lockfile',
+			} as SpawnSyncReturns<string>);
+
+			const result = updateSkills(mockTargetDir);
+
+			expect(result.allSuccess).toBe(false);
+			expect(result.sources[0]?.error).toBe('no lockfile');
+		});
+
+		it('dry-run returns a plan and never spawns', () => {
 			const result = updateSkills(mockTargetDir, { dryRun: true });
 
-			expect(result.dryRun).toBe(true);
-			expect(result.upstreamCommand).toBe('npx skills update --yes');
-			expect(fs.cpSync).not.toHaveBeenCalled();
 			expect(spawnSync).not.toHaveBeenCalled();
+			expect(result.dryRun).toBe(true);
+			expect(result.sources).toHaveLength(1);
+			expect(result.sources[0]?.command).toBe('npx skills update --yes');
 		});
 	});
 });

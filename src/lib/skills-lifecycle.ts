@@ -1,9 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../utils/paths.js';
 
-/** Nine custom skills vendored with this package. */
+/** Nine custom skills authored in this repo (marketplace source: skills/, pulled via `npx skills`). */
 export const CUSTOM_SKILL_NAMES = [
 	'wp-bootstrap',
 	'wp-gravity-connect',
@@ -16,7 +14,7 @@ export const CUSTOM_SKILL_NAMES = [
 	'wp-wpengine',
 ] as const;
 
-/** Upstream skills installed via the external `npx skills` CLI. */
+/** Upstream skills maintained by WordPress/agent-skills (pulled via `npx skills`). */
 export const UPSTREAM_SKILL_NAMES = [
 	'blueprint',
 	'wordpress-router',
@@ -37,223 +35,177 @@ export const UPSTREAM_SKILL_NAMES = [
 	'wpds',
 ] as const;
 
+/**
+ * The GitHub repo that hosts our nine custom skills (top-level `skills/` dir,
+ * read by the `skills` CLI). This repo IS the marketplace for our skills.
+ */
+export const OUR_SKILLS_SOURCE = 'kylebrodeur/wordpress-agent-kit';
+
+/** The upstream WordPress skills marketplace. */
+export const UPSTREAM_SKILLS_SOURCE = 'WordPress/agent-skills';
+
+/**
+ * The `skills` CLI agent identifier whose `skillsDir` is the universal
+ * `.agents/skills/` directory. Installing for a universal agent writes real
+ * files to `.agents/skills/` only — no per-agent directories (.claude/skills,
+ * .cursor/skills, …) are created. All universal agents (Cursor, Copilot,
+ * Codex, Pi, …) share this single directory.
+ */
+const UNIVERSAL_AGENT = 'cursor';
+
 /** Options for installing skills. */
 export interface SkillsInstallOptions {
-	/** Preview the plan without executing. */
+	/** Preview the plan (the two `npx skills add` commands) without executing. */
 	dryRun?: boolean;
-	/** Force overwrite of existing custom skills. */
-	force?: boolean;
-	/** Passthrough to `npx skills add --agent`. */
-	agent?: string;
-	/** Passthrough to `npx skills add --project-dir`. */
-	projectDir?: string;
-	/** Passthrough to `npx skills add --global`. */
-	global?: boolean;
 }
 
 /** Options for updating skills. */
 export interface SkillsUpdateOptions {
-	/** Preview the plan without executing. */
+	/** Preview the plan (the `npx skills update` command) without executing. */
 	dryRun?: boolean;
-	/** Force overwrite of existing custom skills. */
-	force?: boolean;
+}
+
+/** Outcome of a single `npx skills` invocation. */
+export interface SkillsSourceResult {
+	/** The source repo (`kylebrodeur/wordpress-agent-kit`, `WordPress/agent-skills`, or `update`). */
+	source: string;
+	/** The full command that was run (or would be run, in dry-run). */
+	command: string;
+	/** Whether the command succeeded. */
+	success: boolean;
+	/** Error message on failure (undefined in dry-run or on success). */
+	error?: string;
 }
 
 /** Result of a skills install or update operation. */
 export interface SkillsResult {
 	targetDir: string;
-	/** Custom skills that were copied/updated. */
-	customSkills: string[];
-	/** Whether the upstream `npx skills` step succeeded. */
-	upstreamSuccess: boolean;
-	/** Human-readable upstream command that was run (or planned). */
-	upstreamCommand?: string;
-	/** Error message if the upstream step failed. */
-	upstreamError?: string;
-	/** Warnings for the user (e.g., nested git repos). */
+	/** Each `npx skills` step and its outcome. */
+	sources: SkillsSourceResult[];
+	/** True only if every step succeeded. */
+	allSuccess: boolean;
 	warnings: string[];
-	/** Duration of the operation in milliseconds. */
 	durationMs: number;
-	/** Whether this was a dry-run preview. */
 	dryRun: boolean;
 }
 
 /**
- * Detect whether `targetDir` is nested inside an outer git repository.
- * This can confuse `npx skills`, which may install relative to the outer repo root.
+ * Run an `npx skills` command. Never throws; failures are captured in the result.
+ * In a TTY, output streams to the user so they see install progress; otherwise
+ * output is captured for error reporting.
  */
-function outerRepoAbove(targetDir: string): boolean {
-	let current = path.resolve(targetDir);
-	const root = path.parse(current).root;
-
-	while (current !== root) {
-		const parent = path.dirname(current);
-		if (parent === current) break;
-		if (fs.existsSync(path.join(parent, '.git'))) {
-			return true;
-		}
-		current = parent;
-	}
-
-	return false;
-}
-
-/** Copy the nine vendored custom skills into the target .agents/skills/ directory. */
-function copyCustomSkills(targetDir: string, force = false): string[] {
-	const sourceSkillsDir = path.join(PACKAGE_ROOT, 'skills');
-	const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
-	const copied: string[] = [];
-
-	if (!fs.existsSync(sourceSkillsDir)) {
-		return copied;
-	}
-
-	if (!fs.existsSync(targetSkillsDir)) {
-		fs.mkdirSync(targetSkillsDir, { recursive: true });
-	}
-
-	for (const skillName of fs.readdirSync(sourceSkillsDir)) {
-		if (!CUSTOM_SKILL_NAMES.includes(skillName as (typeof CUSTOM_SKILL_NAMES)[number])) {
-			continue;
-		}
-
-		const src = path.join(sourceSkillsDir, skillName);
-		if (!fs.statSync(src).isDirectory()) continue;
-
-		const dest = path.join(targetSkillsDir, skillName);
-		if (fs.existsSync(dest) && force) {
-			fs.rmSync(dest, { recursive: true, force: true });
-		}
-		fs.cpSync(src, dest, { recursive: true, force: true });
-		copied.push(skillName);
-	}
-
-	return copied;
-}
-
-/**
- * Run an optional upstream `npx skills` command.
- * Never throws; failures are captured in the returned fields.
- */
-function runUpstreamSkillsCommand(
-	args: string[],
-	cwd: string
-): { upstreamCommand: string; upstreamSuccess: boolean; upstreamError?: string } {
-	const upstreamCommand = `npx ${args.join(' ')}`;
-	let upstreamSuccess = false;
-	let upstreamError: string | undefined;
-
+function runSkillsCommand(args: string[], cwd: string): SkillsSourceResult {
+	const source = args[2] ?? 'update';
+	const command = `npx ${args.join(' ')}`;
 	try {
 		const result = spawnSync('npx', args, {
 			cwd,
 			encoding: 'utf-8',
 			stdio: process.stdout.isTTY ? 'inherit' : 'pipe',
 		});
-		upstreamSuccess = result.status === 0;
-		if (!upstreamSuccess) {
-			upstreamError = result.stderr?.trim() || result.error?.message || `${upstreamCommand} failed`;
-		}
+		const success = result.status === 0;
+		return {
+			source,
+			command,
+			success,
+			error: success
+				? undefined
+				: result.stderr?.trim() || result.error?.message || `${command} failed`,
+		};
 	} catch (error: unknown) {
-		upstreamError = error instanceof Error ? error.message : String(error);
+		return {
+			source,
+			command,
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { upstreamCommand, upstreamSuccess, upstreamError };
-}
-
-/** Build the `npx skills add` argument list from passthrough options. */
-function buildAddArgs(options: SkillsInstallOptions): string[] {
-	const args = ['skills', 'add', 'WordPress/agent-skills', '--yes'];
-	if (options.agent) args.push('--agent', options.agent);
-	if (options.projectDir) args.push('--project-dir', options.projectDir);
-	if (options.global) args.push('--global');
-	return args;
 }
 
 /**
- * Install skills into the target directory.
- * Copies our nine vendored custom skills, then fetches the 17 upstream skills
- * via `npx skills add WordPress/agent-skills --yes`.
+ * Install all skills into the target directory's `.agents/skills/`.
+ *
+ * Runs two `npx skills add` commands (our nine custom skills from this repo,
+ * then the seventeen upstream skills from WordPress/agent-skills). Both target
+ * the universal `.agents/skills/` directory only. The skills-lock.json written
+ * by the `skills` CLI tracks both sources. A failure of one source does not
+ * abort the other.
  */
 export function installSkills(targetDir: string, options: SkillsInstallOptions = {}): SkillsResult {
 	const startTime = Date.now();
 	const resolvedTarget = path.resolve(targetDir);
 	const dryRun = options.dryRun ?? false;
-	const force = options.force ?? false;
-	const warnings: string[] = [];
 
-	if (outerRepoAbove(resolvedTarget)) {
-		warnings.push(
-			`Target directory ${resolvedTarget} appears to be nested inside an outer git repository; \`npx skills\` may install relative to the outer repo root.`
-		);
-	}
-
-	const upstreamArgs = buildAddArgs(options);
+	const addOur = ['skills', 'add', OUR_SKILLS_SOURCE, '--agent', UNIVERSAL_AGENT, '--yes'];
+	const addUpstream = [
+		'skills',
+		'add',
+		UPSTREAM_SKILLS_SOURCE,
+		'--agent',
+		UNIVERSAL_AGENT,
+		'--yes',
+	];
 
 	if (dryRun) {
 		return {
 			targetDir: resolvedTarget,
-			customSkills: [...CUSTOM_SKILL_NAMES],
-			upstreamCommand: `npx ${upstreamArgs.join(' ')}`,
-			upstreamSuccess: true,
-			warnings,
+			sources: [
+				{ source: OUR_SKILLS_SOURCE, command: `npx ${addOur.join(' ')}`, success: true },
+				{ source: UPSTREAM_SKILLS_SOURCE, command: `npx ${addUpstream.join(' ')}`, success: true },
+			],
+			allSuccess: true,
+			warnings: [],
 			durationMs: Date.now() - startTime,
 			dryRun: true,
 		};
 	}
 
-	const customSkills = copyCustomSkills(resolvedTarget, force);
-	const upstream = runUpstreamSkillsCommand(upstreamArgs, resolvedTarget);
+	const sources = [
+		runSkillsCommand(addOur, resolvedTarget),
+		runSkillsCommand(addUpstream, resolvedTarget),
+	];
 
 	return {
 		targetDir: resolvedTarget,
-		customSkills,
-		upstreamCommand: upstream.upstreamCommand,
-		upstreamSuccess: upstream.upstreamSuccess,
-		upstreamError: upstream.upstreamError,
-		warnings,
+		sources,
+		allSuccess: sources.every((s) => s.success),
+		warnings: [],
 		durationMs: Date.now() - startTime,
 		dryRun: false,
 	};
 }
 
 /**
- * Update installed skills in the target directory.
- * Re-copies the nine vendored custom skills, then runs `npx skills update --yes`.
+ * Update all installed skills in the target directory's `.agents/skills/`.
+ *
+ * Runs `npx skills update`, which refreshes every skill tracked in
+ * skills-lock.json (both our nine and the seventeen upstream) in place.
  */
 export function updateSkills(targetDir: string, options: SkillsUpdateOptions = {}): SkillsResult {
 	const startTime = Date.now();
 	const resolvedTarget = path.resolve(targetDir);
 	const dryRun = options.dryRun ?? false;
-	const force = options.force ?? false;
-	const warnings: string[] = [];
 
-	if (outerRepoAbove(resolvedTarget)) {
-		warnings.push(
-			`Target directory ${resolvedTarget} appears to be nested inside an outer git repository; \`npx skills\` may update relative to the outer repo root.`
-		);
-	}
+	const updateArgs = ['skills', 'update', '--yes'];
+
 	if (dryRun) {
 		return {
 			targetDir: resolvedTarget,
-			customSkills: [...CUSTOM_SKILL_NAMES],
-			upstreamCommand: 'npx skills update --yes',
-			upstreamSuccess: true,
-			warnings,
+			sources: [{ source: 'update', command: `npx ${updateArgs.join(' ')}`, success: true }],
+			allSuccess: true,
+			warnings: [],
 			durationMs: Date.now() - startTime,
 			dryRun: true,
 		};
 	}
 
-	const customSkills = copyCustomSkills(resolvedTarget, force);
-	const upstream = runUpstreamSkillsCommand(['skills', 'update', '--yes'], resolvedTarget);
+	const sources = [runSkillsCommand(updateArgs, resolvedTarget)];
 
 	return {
 		targetDir: resolvedTarget,
-		customSkills,
-		upstreamCommand: upstream.upstreamCommand,
-		upstreamSuccess: upstream.upstreamSuccess,
-		upstreamError: upstream.upstreamError,
-		warnings,
+		sources,
+		allSuccess: sources.every((s) => s.success),
+		warnings: [],
 		durationMs: Date.now() - startTime,
 		dryRun: false,
 	};

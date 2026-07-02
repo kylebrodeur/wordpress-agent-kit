@@ -6,7 +6,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
-**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 26 WordPress agent skills (17 upstream + 9 custom: bootstrap, WP Engine, Gravity Forms, SMTP, Connect, GravityView, Gravity Wiz, Pods, and the stack orchestrator), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly.
+**WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 26 WordPress agent skills (9 custom: bootstrap, WP Engine, Gravity Forms, SMTP, Connect, GravityView, Gravity Wiz, Pods, and the stack orchestrator — pulled via `npx skills add kylebrodeur/wordpress-agent-kit`; 17 upstream — pulled via `npx skills add WordPress/agent-skills`), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly. The npm package ships ONLY the CLI + platform agents/prompts + AGENTS.template.md; skills are pulled at install time via `npx skills` (requires network + npx).
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
 
@@ -19,10 +19,10 @@ Choose your scenario:
 ### Scenario 1: Brand New WordPress Project
 
 ```bash
-# 1. Install the kit (copies platform agents/instructions + AGENTS.md template; prints a hint to run skills install)
+# 1. Install the kit (copies platform agents/instructions + AGENTS.md template; does NOT touch skills — prints a hint to run `skills install`)
 npx wp-agent-kit install /path/to/my-plugin --platform github
 
-# 2. Install skills (our 9 custom from the bundle + 17 upstream via npx skills add WordPress/agent-skills)
+# 2. Install skills (our 9 via npx skills add kylebrodeur/wordpress-agent-kit + 17 upstream via npx skills add WordPress/agent-skills, both into .agents/skills/)
 npx wp-agent-kit skills install /path/to/my-plugin
 
 # 3. Run auto-setup (detects project type and configures AGENTS.md)
@@ -125,8 +125,8 @@ npx wp-agent-kit install --no-safe --force
 | ----------------------- | ------------------------------------------------------------------------- |
 | `install [dir]`         | Install kit (platform agents + AGENTS.md template) into a project         |
 | `setup [dir]`           | Interactive or headless configuration                                     |
-| `skills install [dir]`  | Install skills (9 custom bundled + 17 upstream via `npx skills add`)      |
-| `skills update [dir]`   | Refresh installed skills (re-pull upstream + re-copy custom)              |
+| `skills install [dir]`  | Install all 26 skills into `.agents/skills/` via two `npx skills add` commands (our 9 + 17 upstream) |
+| `skills update [dir]`   | Refresh installed skills via `npx skills update`                                            |
 | `upgrade [dir]`         | Check or apply version upgrades                                           |
 | `playground`            | Launch local WordPress Playground                                         |
 
@@ -165,7 +165,8 @@ pi install npm:wordpress-agent-kit
 | -------------------- | ----------------------------------------------------------------------------- |
 | `wp_triage`          | Detect WordPress project type, signals, and tooling                          |
 | `wp_install_kit`     | Install/update kit into a project (safe by default)                           |
-| `wp_skills_install`  | Install skills (9 custom bundled + 17 upstream via `npx skills add`)          |
+| `wp_skills_install`  | Install all 26 skills via `npx skills add` (our 9 + 17 upstream) into `.agents/skills/` |
+| `wp_skills_update`   | Refresh installed skills via `npx skills update`                                          |
 | `wp_upgrade`         | Check and apply version upgrades                                              |
 
 ### Pi Commands (Type `/` in Pi TUI)
@@ -175,6 +176,7 @@ pi install npm:wordpress-agent-kit
 | `/wp-triage [dir]`       | Run project detection, show in status bar |
 | `/wp-install [dir]`      | Install kit into current project          |
 | `/wp-skills-install [dir]` | Install skills into current project     |
+| `/wp-skills-update [dir]`  | Refresh skills in current project       |
 | `/wp-upgrade`            | Show installed vs latest version          |
 
 ---
@@ -186,10 +188,11 @@ Import directly into scripts, tests, or other tools:
 ```typescript
 import {
   installKitApi, // Install/update kit (platform agents + AGENTS.md)
-  installSkillsApi, // Install skills (custom bundle + upstream pull)
-  updateSkillsApi, // Refresh installed skills
+  installSkillsApi, // Install skills (our 9 + 17 upstream via npx skills add)
+  updateSkillsApi, // Refresh installed skills (npx skills update)
   runTriageApi, // Run project detection
   configureAgentsMdApi, // Configure AGENTS.md
+  cleanSkillsApi, // Detect and remove orphaned skills
   computeChanges, // Preview file changes (dry-run)
   isKitInstalled, // Check if kit is installed
   loadManifest, // Read install manifest
@@ -237,7 +240,7 @@ console.log(triage.data.project.primary); // "plugin"
 
 ## Skills Reference
 
-All 26 skills follow the [AgentSkills.io](https://agentskills.io) specification. Our 9 custom skills are vendored under the top-level `skills/` directory and shipped in the npm package (offline/pinned); they survive upstream updates unchanged. The 17 upstream skills are pulled at install time via `npx skills add WordPress/agent-skills` (the [vercel-labs/skills](https://github.com/vercel-labs/skills) CLI) rather than being vendored:
+All 26 skills follow the [AgentSkills.io](https://agentskills.io) specification. **Nothing is vendored in the npm package** — the package ships only the CLI, platform agents/instructions/prompts (`.github/`), and `AGENTS.template.md`. Our 9 custom skills live in the top-level `skills/` directory committed to git (the marketplace source for `npx skills add kylebrodeur/wordpress-agent-kit`), but are excluded from the npm package (`.npmignore`). The 17 upstream skills come from the [WordPress/agent-skills](https://github.com/WordPress/agent-skills) GitHub repo, pulled via `npx skills add WordPress/agent-skills` (the [vercel-labs/skills](https://github.com/vercel-labs/skills) CLI). We do not maintain or vendor them. Both pulls require network + npx and write to the generated, gitignored `.agents/skills/` directory:
 
 | Skill                                  | When to Use                                                                        |
 | -------------------------------------- | ---------------------------------------------------------------------------------- |

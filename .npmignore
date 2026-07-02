@@ -19,7 +19,10 @@ vitest.config.ts
 # CI workflows (but NOT .github/agents/ or .github/instructions/ — those get installed)
 .github/workflows/
 
-# Dev-generated skills directory (populated at dev-time via `npx skills`); custom skills ship from top-level skills/
+# Skills are NOT shipped in the npm package — they are pulled fresh via `npx skills`
+# (our 9 from kylebrodeur/wordpress-agent-kit, 17 upstream from WordPress/agent-skills).
+# skills/ is the marketplace source committed to git; .agents/skills/ is dev-generated.
+skills/
 .agents/skills/
 
 # Internal docs

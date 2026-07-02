@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url';
  * WordPress Agent Kit — Pi Extension
  *
  * Provides Pi Coding Agent with WordPress development tools:
- * - 9 custom WordPress skills (vendored in skills/, shipped in the npm package) +
- *   17 upstream skills (pulled via `npx skills add WordPress/agent-skills`, NOT vendored).
- *   Custom skills are served by resources_discover (cwd-aware, zero collision).
+ * - 9 custom WordPress skills (authored in skills/, the `npx skills` marketplace source,
+ *   committed to git but NOT shipped in the npm package) + 17 upstream skills
+ *   (WordPress/agent-skills, also via `npx skills`). No skills are vendored — all are
+ *   pulled fresh via `npx skills` by `wp_skills_install`.
  * - Project triage detection
  * - Skill install/update lifecycle, kit install, upgrade, orphan cleanup, project bootstrapping
  *
@@ -17,10 +18,10 @@ import { fileURLToPath } from 'node:url';
  *   Pi auto-discovers .agents/skills/ from the project cwd. We must NOT register the
  *   same directory via pi.skills in package.json (removed) — that would cause duplicate
  *   name warnings every session. resources_discover instead checks event.cwd: if the
- *   project already has .agents/skills/, it stays silent; otherwise it serves the
- *   package's bundled custom skills (skills/) so they work before `skills install` is run.
- *   The 17 upstream skills are not bundled — they arrive via `wp_skills_install`
- *   (which runs `npx skills add WordPress/agent-skills`).
+ *   project already has .agents/skills/, it stays silent; otherwise, when skills/ is
+ *   present (dev checkout), it serves it as a convenience before `skills install` runs.
+ *   In an npm install (skills/ is not shipped) this is a no-op — run `wp_skills_install`
+ *   to populate .agents/skills/ via `npx skills add`.
  */
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
@@ -292,12 +293,12 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_skills_install',
 		label: 'WP Skills Install',
 		description:
-			'Install WordPress Agent Kit skills into a project. Copies our 9 vendored custom skills (from skills/) into .agents/skills/, then pulls the 17 upstream skills via `npx skills add WordPress/agent-skills`. The upstream step never aborts the custom-skill copy on failure. Use dryRun: true to preview.',
-		promptSnippet: 'Install WordPress agent skills (custom bundle + upstream via npx skills)',
+			'Install WordPress Agent Kit skills into a project via `npx skills`. Pulls our 9 custom skills (kylebrodeur/wordpress-agent-kit) and the 17 upstream skills (WordPress/agent-skills) into .agents/skills/. No vendoring — skills are pulled fresh. Use dryRun: true to preview.',
+		promptSnippet: 'Install WordPress agent skills via npx skills (our 9 + 17 upstream)',
 		promptGuidelines: [
 			'Use wp_skills_install after wp_install_kit to bring skills into the project.',
 			'Use wp_skills_install with dryRun: true to preview before applying.',
-			'The 17 upstream skills require `npx skills` (vercel-labs/skills) and network access.',
+			'Requires `npx skills` (vercel-labs/skills) and network access; skills land in .agents/skills/.',
 		],
 		parameters: Type.Object({
 			targetDir: Type.Optional(
@@ -308,37 +309,23 @@ export default function (pi: ExtensionAPI) {
 			dryRun: Type.Optional(
 				Type.Boolean({ description: 'Preview without applying (default: false)' })
 			),
-			force: Type.Optional(
-				Type.Boolean({ description: 'Overwrite existing custom skills (default: false)' })
-			),
-			agent: Type.Optional(Type.String({ description: 'Passthrough to `npx skills add --agent`' })),
-			projectDir: Type.Optional(
-				Type.String({ description: 'Passthrough to `npx skills add --project-dir`' })
-			),
-			global: Type.Optional(
-				Type.Boolean({ description: 'Passthrough to `npx skills add --global`' })
-			),
 		}),
 		async execute(_callId, params, _signal, onUpdate, _ctx) {
 			const targetDir = params.targetDir || process.cwd();
-			const opts = {
-				targetDir,
-				dryRun: params.dryRun ?? false,
-				force: params.force ?? false,
-				agent: params.agent,
-				projectDir: params.projectDir,
-				global: params.global ?? false,
-			};
+			const dryRun = params.dryRun ?? false;
 
-			if (opts.dryRun) {
-				onUpdate?.({ content: [{ type: 'text', text: 'Planning skills install (dry-run)...' }] });
-			} else {
-				onUpdate?.({
-					content: [{ type: 'text', text: 'Installing skills (custom + upstream)...' }],
-				});
-			}
+			onUpdate?.({
+				content: [
+					{
+						type: 'text',
+						text: dryRun
+							? 'Planning skills install (dry-run)...'
+							: 'Installing skills via npx skills...',
+					},
+				],
+			});
 
-			const result = await installSkillsApi(opts);
+			const result = await installSkillsApi({ targetDir, dryRun });
 			if (!result.success) {
 				return {
 					content: [
@@ -351,11 +338,8 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 
-			// Dry-run: show plan
-			if (opts.dryRun && 'wouldExecute' in (result.data || {})) {
-				const dr = result.data as {
-					actions: Array<{ type: string; description: string }>;
-				};
+			if (dryRun && 'wouldExecute' in (result.data || {})) {
+				const dr = result.data as { actions: Array<{ type: string; description: string }> };
 				return {
 					content: [
 						{
@@ -375,20 +359,15 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const data = result.data as {
-				customSkills: string[];
-				upstreamSuccess: boolean;
-				upstreamCommand?: string;
-				upstreamError?: string;
+				sources: Array<{ source: string; command: string; success: boolean; error?: string }>;
 				warnings: string[];
 			};
-			const lines = [
-				'# Skills Installed',
-				'',
-				`**Custom skills**: ${data.customSkills.length} copied (from skills/)`,
-				`**Upstream**: ${data.upstreamSuccess ? '✅ pulled via npx skills' : '⚠ skipped (see warnings)'}`,
-			];
-			if (data.upstreamCommand) lines.push(`  - ${data.upstreamCommand}`);
-			if (data.upstreamError) lines.push(`  - Error: ${data.upstreamError}`);
+			const lines = ['# Skills Installed', ''];
+			for (const s of data.sources) {
+				lines.push(`**${s.source}**: ${s.success ? '✅ installed' : '⚠ failed'}`);
+				lines.push(`  - ${s.command}`);
+				if (s.error) lines.push(`  - Error: ${s.error}`);
+			}
 			if (data.warnings.length) {
 				lines.push('', '**Warnings**:');
 				for (const w of data.warnings) lines.push(`- ${w}`);
@@ -405,8 +384,8 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_skills_update',
 		label: 'WP Skills Update',
 		description:
-			'Update WordPress Agent Kit skills in a project. Re-copies our 9 vendored custom skills (from skills/) into .agents/skills/, then runs `npx skills update` to refresh the 17 upstream skills. The upstream step never aborts the custom-skill refresh on failure. Use dryRun: true to preview.',
-		promptSnippet: 'Update WordPress agent skills (custom bundle + upstream via npx skills update)',
+			'Update WordPress Agent Kit skills in a project via `npx skills update`. Refreshes every skill tracked in skills-lock.json (our 9 and the 17 upstream) in .agents/skills/. Use dryRun: true to preview.',
+		promptSnippet: 'Update WordPress agent skills via npx skills update',
 		promptGuidelines: [
 			'Use wp_skills_update to refresh skills in an existing project after a kit upgrade.',
 			'Use wp_skills_update with dryRun: true to preview before applying.',
@@ -420,28 +399,23 @@ export default function (pi: ExtensionAPI) {
 			dryRun: Type.Optional(
 				Type.Boolean({ description: 'Preview without applying (default: false)' })
 			),
-			force: Type.Optional(
-				Type.Boolean({ description: 'Overwrite existing custom skills (default: false)' })
-			),
 		}),
 		async execute(_callId, params, _signal, onUpdate, _ctx) {
 			const targetDir = params.targetDir || process.cwd();
-			const opts = {
-				targetDir,
-				dryRun: params.dryRun ?? false,
-				force: params.force ?? false,
-			};
+			const dryRun = params.dryRun ?? false;
 
 			onUpdate?.({
 				content: [
 					{
 						type: 'text',
-						text: opts.dryRun ? 'Planning skills update (dry-run)...' : 'Updating skills...',
+						text: dryRun
+							? 'Planning skills update (dry-run)...'
+							: 'Updating skills via npx skills update...',
 					},
 				],
 			});
 
-			const result = await updateSkillsApi(opts);
+			const result = await updateSkillsApi({ targetDir, dryRun });
 			if (!result.success) {
 				return {
 					content: [
@@ -454,7 +428,7 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 
-			if (opts.dryRun && 'wouldExecute' in (result.data || {})) {
+			if (dryRun && 'wouldExecute' in (result.data || {})) {
 				const dr = result.data as { actions: Array<{ type: string; description: string }> };
 				return {
 					content: [
@@ -475,20 +449,15 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const data = result.data as {
-				customSkills: string[];
-				upstreamSuccess: boolean;
-				upstreamCommand?: string;
-				upstreamError?: string;
+				sources: Array<{ source: string; command: string; success: boolean; error?: string }>;
 				warnings: string[];
 			};
-			const lines = [
-				'# Skills Updated',
-				'',
-				`**Custom skills**: ${data.customSkills.length} refreshed (from skills/)`,
-				`**Upstream**: ${data.upstreamSuccess ? '✅ refreshed via npx skills update' : '⚠ skipped (see warnings)'}`,
-			];
-			if (data.upstreamCommand) lines.push(`  - ${data.upstreamCommand}`);
-			if (data.upstreamError) lines.push(`  - Error: ${data.upstreamError}`);
+			const lines = ['# Skills Updated', ''];
+			for (const s of data.sources) {
+				lines.push(`**${s.source}**: ${s.success ? '✅ refreshed' : '⚠ failed'}`);
+				lines.push(`  - ${s.command}`);
+				if (s.error) lines.push(`  - Error: ${s.error}`);
+			}
 			if (data.warnings.length) {
 				lines.push('', '**Warnings**:');
 				for (const w of data.warnings) lines.push(`- ${w}`);
@@ -873,7 +842,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand('wp-skills-install', {
-		description: 'Install WordPress skills (custom bundle + upstream via npx skills)',
+		description: 'Install WordPress skills via npx skills (our 9 + 17 upstream)',
 		handler: async (args, ctx) => {
 			const targetDir = args?.trim() || ctx.cwd;
 			ctx.ui.setStatus('wp-skills', 'Installing skills...');
@@ -882,17 +851,18 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify(`Skills install failed: ${result.error?.message}`, 'error');
 				return;
 			}
-			const data = result.data as { customSkills: string[]; upstreamSuccess: boolean };
+			const data = result.data as { sources: { success: boolean }[]; allSuccess: boolean };
+			const ok = data.sources.filter((s) => s.success).length;
 			ctx.ui.notify(
-				`${data.customSkills.length} custom + ${data.upstreamSuccess ? 'upstream ok' : 'upstream skipped'}`,
-				data.upstreamSuccess ? 'info' : 'warning'
+				`${ok}/${data.sources.length} sources installed`,
+				data.allSuccess ? 'info' : 'warning'
 			);
-			ctx.ui.setStatus('wp-skills', `${data.customSkills.length} custom installed`);
+			ctx.ui.setStatus('wp-skills', `${ok}/${data.sources.length} sources`);
 		},
 	});
 
 	pi.registerCommand('wp-skills-update', {
-		description: 'Update WordPress skills (custom bundle + upstream via npx skills update)',
+		description: 'Update WordPress skills via npx skills update',
 		handler: async (args, ctx) => {
 			const targetDir = args?.trim() || ctx.cwd;
 			ctx.ui.setStatus('wp-skills', 'Updating skills...');
@@ -901,12 +871,13 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify(`Skills update failed: ${result.error?.message}`, 'error');
 				return;
 			}
-			const data = result.data as { customSkills: string[]; upstreamSuccess: boolean };
+			const data = result.data as { sources: { success: boolean }[]; allSuccess: boolean };
+			const ok = data.sources.filter((s) => s.success).length;
 			ctx.ui.notify(
-				`${data.customSkills.length} custom refreshed + ${data.upstreamSuccess ? 'upstream ok' : 'upstream skipped'}`,
-				data.upstreamSuccess ? 'info' : 'warning'
+				`${ok}/${data.sources.length} sources refreshed`,
+				data.allSuccess ? 'info' : 'warning'
 			);
-			ctx.ui.setStatus('wp-skills', `${data.customSkills.length} custom refreshed`);
+			ctx.ui.setStatus('wp-skills', `${ok}/${data.sources.length} sources`);
 		},
 	});
 
