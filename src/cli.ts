@@ -6,7 +6,7 @@ import { cleanSkillsCommand } from './commands/clean-skills.js';
 import { installCommand } from './commands/install.js';
 import { runPlaygroundCommand } from './commands/run-playground.js';
 import { setupCommand } from './commands/setup.js';
-import { syncSkillsCommand } from './commands/sync-skills.js';
+import { skillsCommand } from './commands/skills.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { ExitCode } from './utils/exit-codes.js';
 import { createFormatter } from './utils/output.js';
@@ -35,8 +35,8 @@ program.addCommand(bootstrapCommand);
 program.addCommand(cleanSkillsCommand);
 program.addCommand(installCommand);
 program.addCommand(setupCommand);
-program.addCommand(syncSkillsCommand);
 program.addCommand(runPlaygroundCommand);
+program.addCommand(skillsCommand);
 program.addCommand(upgradeCommand);
 
 // Global error handler
@@ -63,14 +63,14 @@ program.addHelpText(
 Examples:
   $ wp-agent-kit install --platform github
   $ wp-agent-kit setup --auto --json
-  $ wp-agent-kit sync-skills --ref trunk --ndjson
+  $ wp-agent-kit skills install --dry-run
   $ wp-agent-kit clean-skills --dry-run --json
   $ wp-agent-kit clean-skills --remove --platform github
   $ wp-agent-kit upgrade --check-only --json
 
 
 Programmatic API:
-  import { installKit, syncSkills, runTriage } from 'wordpress-agent-kit/api';
+  import { installKitApi, installSkillsApi, runTriageApi } from 'wordpress-agent-kit/api';
 
 For more info: https://github.com/kylebrodeur/wordpress-agent-kit
 `

@@ -1,3 +1,25 @@
+## [Unreleased] — De-vendor upstream skills
+
+### Changed
+
+- **Skills architecture refactor**: Upstream skills are no longer vendored in this repository. The 17 upstream skills (`blueprint`, `wordpress-router`, `wp-abilities-api`, `wp-abilities-audit`, `wp-abilities-verify`, `wp-block-development`, `wp-block-themes`, `wp-interactivity-api`, `wp-performance`, `wp-phpstan`, `wp-playground`, `wp-plugin-development`, `wp-plugin-directory-guidelines`, `wp-project-triage`, `wp-rest-api`, `wp-wpcli-and-ops`, `wpds`) are now pulled at install time via `npx skills add WordPress/agent-skills` (the vercel-labs/skills CLI). `.agents/skills/` is now a dev-only, gitignored, generated directory — no longer shipped.
+- **`skills-custom/` renamed to `skills/`**: Our 9 custom skills (`wp-bootstrap`, `wp-gravity-connect`, `wp-gravity-forms`, `wp-gravity-smtp`, `wp-gravity-stack`, `wp-gravityview`, `wp-gravity-wiz`, `wp-pods`, `wp-wpengine`) now live under the top-level `skills/` directory, which is the canonical source and is still vendored/shipped in the npm package (offline/pinned).
+- **`install` no longer copies skills**: `wp-agent-kit install` now only installs platform-specific agents/instructions/prompts + the `AGENTS.md` template. It prints a hint to run `skills install` separately. Users run `wp-agent-kit skills install` to get skills (custom 9 from the bundle + 17 upstream via `npx skills`).
+
+### Added
+
+- **`wp-agent-kit skills install|update`**: New `skills` subcommand with `install` and `update` subactions, replacing the removed `sync-skills` command. Supports `--dry-run`, `--agent`, `--project-dir`, `--json`, `--quiet`.
+- **`installSkillsApi` / `updateSkillsApi`**: New programmatic API functions in `wordpress-agent-kit/api`, replacing the removed `syncSkillsApi`.
+
+### Removed
+
+- **`sync-skills` CLI command**: Replaced by `wp-agent-kit skills install|update`.
+- **`syncSkillsApi`**: Removed from the programmatic API; use `installSkillsApi` / `updateSkillsApi`.
+
+### Pi Extension
+
+- **`wp_sync_skills` tool → `wp_skills_install`**: The Pi tool `wp_sync_skills` and command `/wp-sync-skills` are replaced by `wp_skills_install` and `/wp-skills-install`.
+
 ## [0.7.1] - 2026-06-27
 
 ### Fixed

@@ -14,14 +14,14 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 ## Architecture
 
 - **Entry Point**: `src/cli.ts`
-- **Commands**: `src/commands/*.ts` (e.g., `install`, `setup`, `sync-skills`, `playground`, `upgrade`)
+- **Commands**: `src/commands/*.ts` (e.g., `install`, `setup`, `skills`, `playground`, `upgrade`)
 - **Core Logic**: `src/lib/*.ts` (e.g., `installer.ts` for file copying, `triage-mapper.ts` for project detection, `api.ts` for programmatic API)
 - **Utilities**: `src/utils/*.ts` (e.g., `paths.ts`, `run.ts`, `output.ts`, `exit-codes.ts`)
 - **Assets**:
   - `AGENTS.template.md`: The template file copied to user projects.
   - `.github/`: Platform-specific agents, instructions, and prompts (copied to target platform dir).
-  - `.agents/skills/`: Universal skills directory (AgentSkills.io convention), copied to target `.agents/skills/`.
-  - `skills-custom/`: Custom skills that survive upstream syncs, merged into `.agents/skills/` on install.
+  - `skills/`: Canonical source for our 9 custom skills (wp-bootstrap, wp-gravity-*, wp-pods, wp-wpengine). Shipped in the npm package (offline/pinned). Copied to the target's `.agents/skills/` by `skills install`.
+  - `.agents/skills/`: Dev-only generated skills directory (AgentSkills.io convention), populated by `wp-agent-kit skills install` from the bundled `skills/` (custom) + upstream pull. NOT shipped.
 
 ## Package Exports
 
@@ -40,9 +40,10 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 
 ## Key Commands
 
-- `install`: Copies `.agents/skills/` (universal convention), platform agents/instructions, and `AGENTS.md` template to a target directory. Supports `--json`, `--dry-run`, `--ndjson`. Merges custom skills from `skills-custom/`.
+- `install`: Copies platform-specific agents/instructions/prompts and the `AGENTS.md` template to a target directory. No longer copies skills — prints a hint to run `skills install` separately. Supports `--json`, `--dry-run`, `--ndjson`.
 - `setup`: Interactive wizard that detects project type and configures the kit. Supports `--auto`, `--project-type`, `--tech-stack`, `--yes`.
-- `sync-skills`: Pulls skills from `WordPress/agent-skills` into `.agents/skills/` (canonical, AgentSkills.io convention), merging custom skills from `skills-custom/`. Supports `--json`, `--dry-run`.
+- `skills install`: Installs skills into a target project's `.agents/skills/` (AgentSkills.io convention): our 9 custom skills from the bundled `skills/` directory + the 17 upstream skills pulled via `npx skills add WordPress/agent-skills` (the vercel-labs/skills CLI). Supports `--dry-run`, `--agent`, `--project-dir`, `--json`, `--quiet`.
+- `skills update`: Refreshes installed skills (re-pulls upstream + re-copies custom). Supports the same flags as `skills install`.
 - `clean-skills`: Detects and removes orphaned skills that are no longer part of the kit. Supports `--dry-run`, `--remove`, `--json`.
 - `playground`: Launches a local WordPress Playground instance using a blueprint.
 - `upgrade`: Checks for and applies newer versions. Supports `--check-only`, `--force`, `--json`.
@@ -54,7 +55,7 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 - `--ndjson`: Newline-delimited JSON for streaming long operations
 - `--quiet`: Suppress non-essential output
 - **Semantic exit codes**: 0=OK, 2=Invalid Args, 3=Not Found, 4=Permission Denied, 5=Already Exists, 6=Git Error, 7=Network Error, 8=Validation Error, 130=Cancelled
-- **Programmatic API**: `import { installKitApi, syncSkillsApi, runTriageApi, configureAgentsMdApi, cleanSkillsApi } from 'wordpress-agent-kit/api'`
+- **Programmatic API**: `import { installKitApi, installSkillsApi, updateSkillsApi, runTriageApi, configureAgentsMdApi, cleanSkillsApi } from 'wordpress-agent-kit/api'`
 
 ## Notes for Agents
 
@@ -62,13 +63,13 @@ This is a Node.js CLI tool (`wp-agent-kit`) designed to scaffold AI agent config
 - The `src/lib/installer.ts` file is critical as it handles the file copying logic.
 - The `src/lib/triage-mapper.ts` file contains logic for mapping project detection results to configuration options.
 - The `src/lib/api.ts` file exposes the programmatic API — all changes to command logic should flow through to the API.
-- The `vendor` directory is gitignored and populated via submodule or script. Upstream skills sync to `.github/skills/` (sync buffer) then copy to `.agents/skills/` (canonical).
-- The `.agents/skills/` directory contains 26 WordPress skills (17 upstream + 9 custom) following the AgentSkills.io spec. Custom skills: `wp-wpengine`, `wp-bootstrap`, `wp-gravity-forms`, `wp-gravity-smtp`, `wp-gravity-connect`, `wp-gravityview`, `wp-gravity-wiz`, `wp-gravity-stack`, `wp-pods`. Skills are installed to `.agents/skills/` (universal convention) instead of platform-specific directories.
+- The 17 upstream skills are no longer vendored. They are pulled at install time via `npx skills add WordPress/agent-skills` (the vercel-labs/skills CLI) and written to the generated, gitignored `.agents/skills/` directory.
+- Skills installed to `.agents/skills/` (AgentSkills.io spec, universal convention) total 26: our 9 custom skills — vendored under the top-level `skills/` directory and shipped in the npm package — `wp-wpengine`, `wp-bootstrap`, `wp-gravity-forms`, `wp-gravity-smtp`, `wp-gravity-connect`, `wp-gravityview`, `wp-gravity-wiz`, `wp-gravity-stack`, `wp-pods` — plus 17 upstream pulled at install time via `npx skills add WordPress/agent-skills`. `.agents/skills/` is generated by `wp-agent-kit skills install` and gitignored (dev-only).
 - CI runs on every push: lint, typecheck, test, build. No publish workflow (manual npm publish only).
 
 ## Pi Extension (Package)
 
 - `pi.extensions`: `./extensions/wp-agent-kit` — registers WordPress agent tools
 - `pi.skills`: removed — Pi auto-discovers `.agents/skills/` from the project cwd (AgentSkills.io convention). The extension's `resources_discover` handler serves the package's 26 skills when the project has no `.agents/skills/` of its own; stays silent otherwise to avoid name-collision warnings.
-- Tools: `wp_triage`, `wp_install_kit`, `wp_sync_skills`, `wp_upgrade`, `wp_clean_skills`
-- Commands: `/wp-triage`, `/wp-install`, `/wp-sync-skills`, `/wp-upgrade`, `/wp-clean-skills`
+- Tools: `wp_triage`, `wp_install_kit`, `wp_skills_install`, `wp_upgrade`, `wp_clean_skills`
+- Commands: `/wp-triage`, `/wp-install`, `/wp-skills-install`, `/wp-upgrade`, `/wp-clean-skills`

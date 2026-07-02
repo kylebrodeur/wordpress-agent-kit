@@ -26,7 +26,7 @@ src/
 ├── commands/
 │   ├── install.ts           # Non-interactive (args + flags only) ✓
 │   ├── setup.ts             # Interactive (prompts only) ✗
-│   ├── sync-skills.ts       # Non-interactive (args + flags only) ✓
+│   ├── skills.ts            # Non-interactive (args + flags only) ✓
 │   └── run-playground.ts    # Non-interactive ✓
 ├── lib/
 │   ├── installer.ts         # Core logic (pure functions) ✓
@@ -103,7 +103,8 @@ export interface InstallResult {
 }
 
 export async function installKit(options: InstallOptions): Promise<InstallResult>;
-export async function syncSkills(options: SyncOptions): Promise<SyncResult>;
+export async function installSkills(options: SkillsOptions): Promise<SkillsResult>;
+export async function updateSkills(options: SkillsOptions): Promise<SkillsResult>;
 export async function runTriage(targetDir: string): Promise<TriageResult>;
 export async function configureAgentsMd(options: ConfigureOptions): Promise<ConfigureResult>;
 ```
@@ -146,13 +147,13 @@ wp-agent-kit setup /path/to/project --auto --json
 
 ### 5. Add Structured Logging / Event Stream
 
-For long-running operations (sync-skills, playground), emit NDJSON events:
+For long-running operations (skills install, playground), emit NDJSON events:
 
 ```bash
-wp-agent-kit sync-skills --json-stream
-# {"event":"start","phase":"clone","timestamp":"..."}
-# {"event":"progress","phase":"fetch","message":"Fetching tags...","timestamp":"..."}
-# {"event":"complete","phase":"install","result":{"skillsSynced":42,"timestamp":"..."}}
+wp-agent-kit skills install --json-stream
+# {"event":"start","phase":"upstream","timestamp":"..."}
+# {"event":"progress","phase":"fetch","message":"npx skills add WordPress/agent-skills...","timestamp":"..."}
+# {"event":"complete","phase":"install","result":{"skillsInstalled":26,"timestamp":"..."}}
 ```
 
 **Events**: `start`, `progress`, `phase-change`, `warning`, `complete`, `error`
@@ -209,9 +210,9 @@ wp-agent-kit --version --json
 wp-agent-kit setup /workspace/my-plugin --auto --json
 # {"success":true,"applied":{"projectType":"plugin","techStack":["gutenberg","npm"]},"filesModified":["AGENTS.md"]}
 
-# 2. Agent syncs latest skills
-wp-agent-kit sync-skills --json
-# {"success":true,"skillsSynced":47,"source":"WordPress/agent-skills@trunk"}
+# 2. Agent installs skills (custom bundle + upstream pull)
+wp-agent-kit skills install --json
+# {"success":true,"skillsInstalled":26,"custom":9,"upstream":17}
 
 # 3. Agent installs for specific platform (e.g., Cursor)
 wp-agent-kit install /workspace/my-plugin --platform cursor --json

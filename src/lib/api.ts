@@ -10,6 +10,15 @@ import { ExitCode, withExitCode } from '../utils/exit-codes.js';
 import { type CliResult, type DryRunResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 import { type Platform, installKit } from './installer.js';
+import {
+	CUSTOM_SKILL_NAMES,
+	type SkillsInstallOptions,
+	type SkillsResult,
+	type SkillsUpdateOptions,
+	UPSTREAM_SKILL_NAMES,
+	installSkills,
+	updateSkills,
+} from './skills-lifecycle.js';
 import { computeChanges, isKitInstalled } from './updater.js';
 
 /** Result of clean-skills operation */
@@ -58,22 +67,33 @@ export interface InstallOptions {
 	backup?: boolean;
 }
 
-/** Result of sync-skills operation */
-export interface SyncResult {
+/** Result of a skills install/update operation */
+export interface SkillsApiResult {
 	targetDir: string;
-	skillsSynced: number;
-	customMerged: number;
-	sourceUrl: string;
-	ref: string;
+	customSkills: string[];
+	upstreamSuccess: boolean;
+	upstreamCommand?: string;
+	upstreamError?: string;
+	warnings: string[];
 	durationMs: number;
-	method: 'skillpack' | 'direct-copy';
+	dryRun: boolean;
 }
 
-/** Options for syncSkills */
-export interface SyncOptions {
-	targetDir?: string;
-	ref?: string;
+/** Options for installSkillsApi */
+export interface InstallSkillsOptions {
+	targetDir: string;
 	dryRun?: boolean;
+	force?: boolean;
+	agent?: string;
+	projectDir?: string;
+	global?: boolean;
+}
+
+/** Options for updateSkillsApi */
+export interface UpdateSkillsOptions {
+	targetDir: string;
+	dryRun?: boolean;
+	force?: boolean;
 }
 
 /** Triage detection result */
@@ -308,247 +328,115 @@ function dryRunInstall(
 }
 
 /**
- * Sync skills from WordPress/agent-skills programmatically.
+ * Install skills programmatically.
+ * Copies our nine vendored custom skills, then fetches upstream skills via `npx skills`.
  */
-export async function syncSkillsApi(options: SyncOptions = {}): Promise<ApiResult<SyncResult>> {
+export async function installSkillsApi(
+	options: InstallSkillsOptions
+): Promise<ApiResult<SkillsApiResult>> {
 	const startTime = Date.now();
-	const formatter = new OutputFormatter('json', 'sync-skills', '0.0.0');
-	const targetDir = options.targetDir || process.cwd();
-	const ref = options.ref || 'trunk';
-
-	if (options.dryRun) {
-		return dryRunSyncSkills(targetDir, ref);
-	}
+	const formatter = new OutputFormatter('json', 'skills-install', '0.0.0');
 
 	try {
-		const result = await withExitCode(async () => {
-			const repoRoot = targetDir;
-			const submodulePath = path.join('vendor', 'wp-agent-skills');
-			const vendorSkillsDir = path.join(repoRoot, submodulePath);
-			const submoduleGitDir = path.join(vendorSkillsDir, '.git');
-
-			// Clone or update
-			if (!fs.existsSync(submoduleGitDir)) {
-				fs.mkdirSync(path.join(repoRoot, 'vendor'), { recursive: true });
-				const cloneResult = spawnSync(
-					'git',
-					['clone', 'https://github.com/WordPress/agent-skills.git', submodulePath],
-					{
-						cwd: repoRoot,
-						encoding: 'utf-8',
-					}
-				);
-				if (cloneResult.status !== 0) {
-					throw new Error(`Git clone failed: ${cloneResult.stderr?.toString()}`);
-				}
-			} else {
-				const fetchResult = spawnSync('git', ['fetch', '--all', '--tags'], {
-					cwd: vendorSkillsDir,
-					encoding: 'utf-8',
-				});
-				if (fetchResult.status !== 0) {
-					throw new Error(`Git fetch failed: ${fetchResult.stderr?.toString()}`);
-				}
-			}
-
-			// Checkout ref
-			const checkoutResult = spawnSync('git', ['checkout', ref], {
-				cwd: vendorSkillsDir,
-				encoding: 'utf-8',
+		if (options.dryRun) {
+			const plan = installSkills(options.targetDir, { dryRun: true });
+			const actions: DryRunResult<SkillsApiResult>['actions'] = [
+				{
+					type: 'copy',
+					source: path.join(PACKAGE_ROOT, 'skills'),
+					target: path.join(plan.targetDir, '.agents', 'skills'),
+					description: `Copy ${plan.customSkills.length} custom skills`,
+				},
+				{
+					type: 'create',
+					target: plan.targetDir,
+					description: plan.upstreamCommand || 'Install upstream skills',
+				},
+			];
+			return formatter.success<DryRunResult<SkillsApiResult>>({
+				wouldExecute: true,
+				actions,
+				summary: plan as SkillsApiResult,
 			});
-			if (checkoutResult.status !== 0) {
-				throw new Error(`Git checkout failed: ${checkoutResult.stderr?.toString()}`);
-			}
+		}
 
-			const pullResult = spawnSync('git', ['pull', 'origin', ref], {
-				cwd: vendorSkillsDir,
-				encoding: 'utf-8',
-			});
-			if (pullResult.status !== 0) {
-				throw new Error(`Git pull failed: ${pullResult.stderr?.toString()}`);
-			}
-
-			const targetSkills = path.join(repoRoot, '.github', 'skills');
-			const upstreamBuildScript = path.join(
-				vendorSkillsDir,
-				'shared',
-				'scripts',
-				'skillpack-build.mjs'
-			);
-			const upstreamInstallScript = path.join(
-				vendorSkillsDir,
-				'shared',
-				'scripts',
-				'skillpack-install.mjs'
-			);
-
-			let method: 'skillpack' | 'direct-copy' = 'direct-copy';
-			let skillsSynced = 0;
-
-			if (fs.existsSync(upstreamBuildScript) && fs.existsSync(upstreamInstallScript)) {
-				if (fs.existsSync(targetSkills)) {
-					fs.rmSync(targetSkills, { recursive: true, force: true });
-				}
-				fs.mkdirSync(path.join(repoRoot, '.github'), { recursive: true });
-
-				const buildResult = spawnSync(
-					'node',
-					['shared/scripts/skillpack-build.mjs', '--clean', '--targets=vscode'],
-					{
-						cwd: vendorSkillsDir,
-						encoding: 'utf-8',
-					}
-				);
-				if (buildResult.status !== 0) {
-					throw new Error(`Skillpack build failed: ${buildResult.stderr?.toString()}`);
-				}
-
-				const installResult = spawnSync(
-					'node',
-					[
-						'shared/scripts/skillpack-install.mjs',
-						`--dest=${repoRoot}`,
-						'--targets=vscode',
-						'--from=dist',
-						'--mode=replace',
-					],
-					{ cwd: vendorSkillsDir, encoding: 'utf-8' }
-				);
-				if (installResult.status !== 0) {
-					throw new Error(`Skillpack install failed: ${installResult.stderr?.toString()}`);
-				}
-
-				method = 'skillpack';
-				if (fs.existsSync(targetSkills)) {
-					skillsSynced = fs.readdirSync(targetSkills).length;
-				}
-			} else {
-				const sourceSkills = path.join(vendorSkillsDir, '.github', 'skills');
-				if (!fs.existsSync(sourceSkills)) {
-					throw new Error(`Upstream skills not found at ${sourceSkills}`);
-				}
-				if (fs.existsSync(targetSkills)) {
-					fs.rmSync(targetSkills, { recursive: true, force: true });
-				}
-				fs.mkdirSync(path.join(repoRoot, '.github'), { recursive: true });
-				fs.cpSync(sourceSkills, targetSkills, { recursive: true });
-				skillsSynced = fs.readdirSync(targetSkills).length;
-			}
-
-			// Merge custom skills (skills-custom/) — these are not part of the upstream
-			// WordPress/agent-skills repo and survive upstream syncs.
-			const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
-			let customMerged = 0;
-			if (fs.existsSync(customSkillsDir)) {
-				for (const skillName of fs.readdirSync(customSkillsDir)) {
-					const src = path.join(customSkillsDir, skillName);
-					const dest = path.join(targetSkills, skillName);
-					if (fs.statSync(src).isDirectory()) {
-						const isNew = !fs.existsSync(dest);
-						fs.cpSync(src, dest, { recursive: true });
-						if (isNew) {
-							skillsSynced++;
-						}
-						customMerged++;
-					}
-				}
-			}
-
-			// Copy synced skills to the canonical .agents/skills/ directory
-			// (AgentSkills.io convention — the pi.skills path in package.json points here).
-			const canonicalSkills = path.join(PACKAGE_ROOT, '.agents', 'skills');
-			if (fs.existsSync(canonicalSkills)) {
-				fs.rmSync(canonicalSkills, { recursive: true, force: true });
-			}
-			fs.mkdirSync(path.join(PACKAGE_ROOT, '.agents'), { recursive: true });
-			fs.cpSync(targetSkills, canonicalSkills, { recursive: true });
-
-			return { success: true, skillsSynced, customMerged, method };
-		});
+		const result = installSkills(options.targetDir, options);
 
 		return formatter.success({
-			targetDir,
-			skillsSynced: result.skillsSynced,
-			customMerged: result.customMerged,
-			sourceUrl: 'https://github.com/WordPress/agent-skills.git',
-			ref,
+			targetDir: result.targetDir,
+			customSkills: result.customSkills,
+			upstreamSuccess: result.upstreamSuccess,
+			upstreamCommand: result.upstreamCommand,
+			upstreamError: result.upstreamError,
+			warnings: result.warnings,
 			durationMs: Date.now() - startTime,
-			method: result.method,
+			dryRun: false,
 		});
 	} catch (error: unknown) {
 		const err = error as Error & { code?: string; exitCode?: ExitCode };
 		return formatter.fail({
-			code: err.code || 'SYNC_FAILED',
-			message: err.message || 'Sync failed',
+			code: err.code || 'SKILLS_INSTALL_FAILED',
+			message: err.message || 'Skills install failed',
 			exitCode: err.exitCode ?? ExitCode.ERROR,
-			details: { ref, targetDir },
+			details: { targetDir: options.targetDir },
 		});
 	}
 }
 
 /**
- * Dry-run preview for sync-skills.
+ * Update skills programmatically.
+ * Re-copies our nine vendored custom skills and runs `npx skills update`.
  */
-function dryRunSyncSkills(targetDir: string, ref: string): CliResult<DryRunResult<SyncResult>> {
-	const actions: DryRunResult['actions'] = [];
-	const targetSkills = path.join(targetDir, '.github', 'skills');
-	const vendorDir = path.join(targetDir, 'vendor', 'wp-agent-skills');
+export async function updateSkillsApi(
+	options: UpdateSkillsOptions
+): Promise<ApiResult<SkillsApiResult>> {
+	const startTime = Date.now();
+	const formatter = new OutputFormatter('json', 'skills-update', '0.0.0');
 
-	actions.push({
-		type: 'mkdir',
-		target: path.join(targetDir, 'vendor'),
-		description: 'Create vendor directory',
-	});
+	try {
+		if (options.dryRun) {
+			const plan = updateSkills(options.targetDir, { dryRun: true });
+			const actions: DryRunResult<SkillsApiResult>['actions'] = [
+				{
+					type: 'copy',
+					source: path.join(PACKAGE_ROOT, 'skills'),
+					target: path.join(plan.targetDir, '.agents', 'skills'),
+					description: `Update ${plan.customSkills.length} custom skills`,
+				},
+				{
+					type: 'update',
+					target: plan.targetDir,
+					description: plan.upstreamCommand || 'Update upstream skills',
+				},
+			];
+			return formatter.success<DryRunResult<SkillsApiResult>>({
+				wouldExecute: true,
+				actions,
+				summary: plan as SkillsApiResult,
+			});
+		}
 
-	if (!fs.existsSync(vendorDir)) {
-		actions.push({
-			type: 'create',
-			target: vendorDir,
-			description: 'Clone WordPress/agent-skills repository',
+		const result = updateSkills(options.targetDir, options);
+
+		return formatter.success({
+			targetDir: result.targetDir,
+			customSkills: result.customSkills,
+			upstreamSuccess: result.upstreamSuccess,
+			upstreamCommand: result.upstreamCommand,
+			upstreamError: result.upstreamError,
+			warnings: result.warnings,
+			durationMs: Date.now() - startTime,
+			dryRun: false,
 		});
-	} else {
-		actions.push({
-			type: 'update',
-			target: vendorDir,
-			description: `Fetch and checkout ${ref}`,
+	} catch (error: unknown) {
+		const err = error as Error & { code?: string; exitCode?: ExitCode };
+		return formatter.fail({
+			code: err.code || 'SKILLS_UPDATE_FAILED',
+			message: err.message || 'Skills update failed',
+			exitCode: err.exitCode ?? ExitCode.ERROR,
+			details: { targetDir: options.targetDir },
 		});
 	}
-
-	if (fs.existsSync(targetSkills)) {
-		actions.push({
-			type: 'delete',
-			target: targetSkills,
-			description: 'Remove existing skills directory',
-		});
-	}
-
-	actions.push({
-		type: 'create',
-		target: targetSkills,
-		description:
-			'Install synced skills to .github/skills (sync buffer), then copy to .agents/skills (canonical)',
-	});
-
-	const canonicalSkills = path.join(targetDir, '.agents', 'skills');
-	actions.push({
-		type: 'create',
-		target: canonicalSkills,
-		description: 'Copy synced skills to .agents/skills (canonical, AgentSkills.io convention)',
-	});
-
-	return new OutputFormatter('json', 'sync-skills', '0.0.0').success({
-		wouldExecute: true,
-		actions,
-		summary: {
-			targetDir,
-			skillsSynced: 0,
-			customMerged: 0,
-			sourceUrl: 'https://github.com/WordPress/agent-skills.git',
-			ref,
-			durationMs: 0,
-			method: 'skillpack',
-		},
-	});
 }
 
 /**
@@ -575,13 +463,12 @@ export async function runTriageApi(options: TriageOptions): Promise<CliResult<Tr
 				'vendor/wp-agent-skills/skills/wp-project-triage/scripts/detect_wp_project.mjs'
 			),
 		];
-
 		const triageScriptPath = triageScriptPaths.find((p) => fs.existsSync(p));
 
 		if (!triageScriptPath) {
 			return formatter.fail({
 				code: 'TRIAGE_NOT_FOUND',
-				message: 'Project triage script not found. Run sync-skills first.',
+				message: 'Project triage script not found. Run `wp-agent-kit skills install` first.',
 				exitCode: ExitCode.NOT_FOUND,
 			});
 		}
@@ -772,7 +659,7 @@ function getInstalledSummary(targetDir: string, platform: Platform): string[] {
 /**
  * Detect and optionally remove orphaned skills from a target installation.
  * Compares the skills in the target platform directory against the source kit
- * (upstream .agents/skills + skills-custom/) and identifies skills that exist
+ * (vendored skills/ + the 17 upstream names) and identifies skills that exist
  * in the target but not in the source.
  */
 export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<CleanResult>> {
@@ -781,23 +668,13 @@ export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<C
 	const { targetDir, platform, dryRun = false, remove = false } = options;
 
 	try {
-		// Canonical skills come from .agents/skills/ (AgentSkills.io convention)
-		// with skills-custom/ as supplemental source for custom skills.
-		const canonicalSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
-		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills-custom');
+		// Canonical skills = our nine vendored custom skills (top-level skills/)
+		// plus the static list of upstream skills installed via `npx skills`.
+		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills');
 		const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
 
 		// Build set of canonical skill names (upstream + custom)
-		const canonicalSkills = new Set<string>();
-
-		if (fs.existsSync(canonicalSkillsDir)) {
-			for (const entry of fs.readdirSync(canonicalSkillsDir)) {
-				const entryPath = path.join(canonicalSkillsDir, entry);
-				if (fs.statSync(entryPath).isDirectory()) {
-					canonicalSkills.add(entry);
-				}
-			}
-		}
+		const canonicalSkills = new Set<string>([...UPSTREAM_SKILL_NAMES]);
 
 		if (fs.existsSync(customSkillsDir)) {
 			for (const entry of fs.readdirSync(customSkillsDir)) {

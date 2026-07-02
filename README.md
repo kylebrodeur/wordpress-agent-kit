@@ -19,13 +19,16 @@ Choose your scenario:
 ### Scenario 1: Brand New WordPress Project
 
 ```bash
-# 1. Install the kit (copies skills, agents, instructions, AGENTS.md template)
+# 1. Install the kit (copies platform agents/instructions + AGENTS.md template; prints a hint to run skills install)
 npx wp-agent-kit install /path/to/my-plugin --platform github
 
-# 2. Run auto-setup (detects project type and configures AGENTS.md)
+# 2. Install skills (our 9 custom from the bundle + 17 upstream via npx skills add WordPress/agent-skills)
+npx wp-agent-kit skills install /path/to/my-plugin
+
+# 3. Run auto-setup (detects project type and configures AGENTS.md)
 npx wp-agent-kit setup /path/to/my-plugin --auto
 
-# 3. (Optional) Verify the triage report
+# 4. (Optional) Verify the triage report
 node .agents/skills/wp-project-triage/scripts/detect_wp_project.mjs
 ```
 
@@ -118,13 +121,14 @@ npx wp-agent-kit install --no-safe --force
 
 ### CLI Commands
 
-| Command             | Purpose                                        |
-| ------------------- | ---------------------------------------------- |
-| `install [dir]`     | Install kit into a project                     |
-| `setup [dir]`       | Interactive or headless configuration          |
-| `sync-skills [ref]` | Pull latest skills from WordPress/agent-skills |
-| `upgrade [dir]`     | Check or apply version upgrades                |
-| `playground`        | Launch local WordPress Playground              |
+| Command                 | Purpose                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `install [dir]`         | Install kit (platform agents + AGENTS.md template) into a project         |
+| `setup [dir]`           | Interactive or headless configuration                                     |
+| `skills install [dir]`  | Install skills (9 custom bundled + 17 upstream via `npx skills add`)      |
+| `skills update [dir]`   | Refresh installed skills (re-pull upstream + re-copy custom)              |
+| `upgrade [dir]`         | Check or apply version upgrades                                           |
+| `playground`            | Launch local WordPress Playground                                         |
 
 ### Platform Flags
 
@@ -157,21 +161,21 @@ pi install npm:wordpress-agent-kit
 
 ### Pi Tools (Callable by the Agent)
 
-| Tool             | What it does                                        |
-| ---------------- | --------------------------------------------------- |
-| `wp_triage`      | Detect WordPress project type, signals, and tooling |
-| `wp_install_kit` | Install/update kit into a project (safe by default) |
-| `wp_sync_skills` | Sync skills from WordPress/agent-skills upstream    |
-| `wp_upgrade`     | Check and apply version upgrades                    |
+| Tool                 | What it does                                                                  |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `wp_triage`          | Detect WordPress project type, signals, and tooling                          |
+| `wp_install_kit`     | Install/update kit into a project (safe by default)                           |
+| `wp_skills_install`  | Install skills (9 custom bundled + 17 upstream via `npx skills add`)          |
+| `wp_upgrade`         | Check and apply version upgrades                                              |
 
 ### Pi Commands (Type `/` in Pi TUI)
 
-| Command                 | What it does                              |
-| ----------------------- | ----------------------------------------- |
-| `/wp-triage [dir]`      | Run project detection, show in status bar |
-| `/wp-install [dir]`     | Install kit into current project          |
-| `/wp-sync-skills [ref]` | Sync skills from upstream                 |
-| `/wp-upgrade`           | Show installed vs latest version          |
+| Command                  | What it does                              |
+| ------------------------ | ----------------------------------------- |
+| `/wp-triage [dir]`       | Run project detection, show in status bar |
+| `/wp-install [dir]`      | Install kit into current project          |
+| `/wp-skills-install [dir]` | Install skills into current project     |
+| `/wp-upgrade`            | Show installed vs latest version          |
 
 ---
 
@@ -181,8 +185,9 @@ Import directly into scripts, tests, or other tools:
 
 ```typescript
 import {
-  installKitApi, // Install/update kit
-  syncSkillsApi, // Sync skills from upstream
+  installKitApi, // Install/update kit (platform agents + AGENTS.md)
+  installSkillsApi, // Install skills (custom bundle + upstream pull)
+  updateSkillsApi, // Refresh installed skills
   runTriageApi, // Run project detection
   configureAgentsMdApi, // Configure AGENTS.md
   computeChanges, // Preview file changes (dry-run)
@@ -232,7 +237,7 @@ console.log(triage.data.project.primary); // "plugin"
 
 ## Skills Reference
 
-All 26 skills follow the [AgentSkills.io](https://agentskills.io) specification. The 17 upstream skills come from the [WordPress/agent-skills](https://github.com/WordPress/agent-skills) repository. Skills in `skills-custom/` (9 total) are project-specific and survive `sync-skills`:
+All 26 skills follow the [AgentSkills.io](https://agentskills.io) specification. Our 9 custom skills are vendored under the top-level `skills/` directory and shipped in the npm package (offline/pinned); they survive upstream updates unchanged. The 17 upstream skills are pulled at install time via `npx skills add WordPress/agent-skills` (the [vercel-labs/skills](https://github.com/vercel-labs/skills) CLI) rather than being vendored:
 
 | Skill                                  | When to Use                                                                        |
 | -------------------------------------- | ---------------------------------------------------------------------------------- |
