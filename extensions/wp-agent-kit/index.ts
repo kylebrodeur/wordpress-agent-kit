@@ -5,19 +5,22 @@ import { fileURLToPath } from 'node:url';
  * WordPress Agent Kit — Pi Extension
  *
  * Provides Pi Coding Agent with WordPress development tools:
- * - 26 WordPress agent skills (17 upstream + 9 custom) via .agents/skills/ (AgentSkills.io convention).
- *   Skills are served by resources_discover (cwd-aware, zero collision).
+ * - 9 custom WordPress skills (vendored in skills/, shipped in the npm package) +
+ *   17 upstream skills (pulled via `npx skills add WordPress/agent-skills`, NOT vendored).
+ *   Custom skills are served by resources_discover (cwd-aware, zero collision).
  * - Project triage detection
- * - Skill installation, syncing, upgrade, orphan cleanup, and project bootstrapping
+ * - Skill install/update lifecycle, kit install, upgrade, orphan cleanup, project bootstrapping
  *
  * Follows Pi Coding Agent SDK conventions (extensions.md, packages.md, skills.md).
  *
  * Collision-free skill loading:
  *   Pi auto-discovers .agents/skills/ from the project cwd. We must NOT register the
- *   same directory via pi.skills in package.json (removed) — that would cause 26 duplicate
+ *   same directory via pi.skills in package.json (removed) — that would cause duplicate
  *   name warnings every session. resources_discover instead checks event.cwd: if the
  *   project already has .agents/skills/, it stays silent; otherwise it serves the
- *   package's canonical .agents/skills/ so skills work before `install` is run.
+ *   package's bundled custom skills (skills/) so they work before `skills install` is run.
+ *   The 17 upstream skills are not bundled — they arrive via `wp_skills_install`
+ *   (which runs `npx skills add WordPress/agent-skills`).
  */
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
@@ -36,7 +39,8 @@ try {
 
 const {
 	installKitApi,
-	syncSkillsApi,
+	installSkillsApi,
+	updateSkillsApi,
 	runTriageApi,
 	cleanSkillsApi,
 	bootstrapApi,
@@ -48,32 +52,32 @@ export default function (pi: ExtensionAPI) {
 	// =========================================================================
 	// Skills Registration
 	// =========================================================================
-	// Skills live in .agents/skills/ (AgentSkills.io convention).
+	// Skills: our 9 custom skills are vendored in skills/ (shipped in the npm package);
+	// the 17 upstream skills are NOT bundled — they are pulled via
+	// `npx skills add WordPress/agent-skills` by `wp_skills_install`.
 	// Pi auto-discovers .agents/skills/ from the project cwd — we must NOT also
 	// register the same directory via pi.skills in package.json, otherwise every
 	// skill collides (package-level registration + project-level auto-discovery).
 	//
 	// Strategy (cwd-aware):
 	//   • If the project already has its own .agents/skills/ (after running
-	//     `wp-agent-kit install`), stay silent — Pi's project-level scan handles it.
-	//   • If the project has no .agents/skills/ yet, serve the package's canonical
-	//     .agents/skills/ so skills are available before install is run.
-	//
-	// This guarantees zero name-collision warnings in every scenario.
+	//     `wp-agent-kit skills install`), stay silent — Pi's project-level scan handles it.
+	//   • If the project has no .agents/skills/ yet, serve the package's bundled
+	//     custom skills (skills/) so they are available before install is run.
 	pi.on('resources_discover', async (event, _ctx) => {
-		const canonicalSkillsDir = path.join(PACKAGE_ROOT, '.agents', 'skills');
+		const canonicalSkillsDir = path.join(PACKAGE_ROOT, 'skills');
 		const promptsDir = path.join(PACKAGE_ROOT, '.github', 'prompts');
 
 		// Check if the current project already has .agents/skills/ installed.
 		// If so, Pi's project-level discovery handles it — returning skillPaths
-		// here would produce 26 collision warnings for identical skill names.
+		// here would produce duplicate-name warnings for identical skill names.
 		const projectSkillsDir = path.join(event.cwd, '.agents', 'skills');
 		if (fs.existsSync(projectSkillsDir)) {
 			return { promptPaths: [promptsDir] };
 		}
 
-		// Project has no .agents/skills/ yet — serve from the package so skills
-		// are immediately available even before `wp-agent-kit install` is run.
+		// Project has no .agents/skills/ yet — serve the bundled custom skills
+		// (skills/) so they are available even before `wp-agent-kit skills install`.
 		if (fs.existsSync(canonicalSkillsDir)) {
 			return {
 				skillPaths: [canonicalSkillsDir],
@@ -171,7 +175,7 @@ export default function (pi: ExtensionAPI) {
 		name: 'wp_install_kit',
 		label: 'WP Install Kit',
 		description:
-			'Install WordPress Agent Kit into a project directory. Copies 26 WordPress skills to .agents/skills/ (AgentSkills.io convention), platform-specific agents/instructions/prompts, and an AGENTS.md template. Safe by default — preserves user modifications on re-run.',
+			'Install WordPress Agent Kit into a project directory. Copies platform-specific agents/instructions/prompts and an AGENTS.md template (does NOT copy skills — run `wp_skills_install` for skills). Safe by default — preserves user modifications on re-run.',
 		promptSnippet: 'Install WordPress AI agent skills and configuration into a project',
 		promptGuidelines: [
 			'Use wp_install_kit when setting up a new WordPress project for AI agent development.',
@@ -271,8 +275,9 @@ export default function (pi: ExtensionAPI) {
 			lines.push(
 				'',
 				'## Next Steps',
-				'1. Run `wp_triage` to detect project type',
-				'2. Review `AGENTS.md` for guidance'
+				'1. Run `wp_skills_install` to install skills (9 custom + 17 upstream via npx skills)',
+				'2. Run `wp_triage` to detect project type',
+				'3. Review `AGENTS.md` for guidance'
 			);
 
 			return {
@@ -282,51 +287,214 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// --- wp_sync_skills ---
+	// --- wp_skills_install ---
 	pi.registerTool({
-		name: 'wp_sync_skills',
-		label: 'WP Sync Skills',
+		name: 'wp_skills_install',
+		label: 'WP Skills Install',
 		description:
-			'Sync WordPress agent skills from the upstream WordPress/agent-skills repository. Fetches the latest upstream skill definitions and merges custom skills from skills-custom/ — custom skills survive upstream syncs.',
-		promptSnippet: 'Sync latest WordPress agent skills from upstream',
+			'Install WordPress Agent Kit skills into a project. Copies our 9 vendored custom skills (from skills/) into .agents/skills/, then pulls the 17 upstream skills via `npx skills add WordPress/agent-skills`. The upstream step never aborts the custom-skill copy on failure. Use dryRun: true to preview.',
+		promptSnippet: 'Install WordPress agent skills (custom bundle + upstream via npx skills)',
 		promptGuidelines: [
-			'Use wp_sync_skills to pull the latest WordPress development skills from WordPress/agent-skills.',
+			'Use wp_skills_install after wp_install_kit to bring skills into the project.',
+			'Use wp_skills_install with dryRun: true to preview before applying.',
+			'The 17 upstream skills require `npx skills` (vercel-labs/skills) and network access.',
 		],
 		parameters: Type.Object({
-			ref: Type.Optional(
+			targetDir: Type.Optional(
 				Type.String({
-					description: 'Git ref to sync from (default: trunk)',
+					description: 'WordPress project directory (defaults to current working directory)',
 				})
+			),
+			dryRun: Type.Optional(
+				Type.Boolean({ description: 'Preview without applying (default: false)' })
+			),
+			force: Type.Optional(
+				Type.Boolean({ description: 'Overwrite existing custom skills (default: false)' })
+			),
+			agent: Type.Optional(Type.String({ description: 'Passthrough to `npx skills add --agent`' })),
+			projectDir: Type.Optional(
+				Type.String({ description: 'Passthrough to `npx skills add --project-dir`' })
+			),
+			global: Type.Optional(
+				Type.Boolean({ description: 'Passthrough to `npx skills add --global`' })
 			),
 		}),
 		async execute(_callId, params, _signal, onUpdate, _ctx) {
-			onUpdate?.({ content: [{ type: 'text', text: 'Syncing from WordPress/agent-skills...' }] });
+			const targetDir = params.targetDir || process.cwd();
+			const opts = {
+				targetDir,
+				dryRun: params.dryRun ?? false,
+				force: params.force ?? false,
+				agent: params.agent,
+				projectDir: params.projectDir,
+				global: params.global ?? false,
+			};
 
-			const result = await syncSkillsApi({
-				targetDir: PACKAGE_ROOT,
-				ref: params.ref || 'trunk',
-			});
+			if (opts.dryRun) {
+				onUpdate?.({ content: [{ type: 'text', text: 'Planning skills install (dry-run)...' }] });
+			} else {
+				onUpdate?.({
+					content: [{ type: 'text', text: 'Installing skills (custom + upstream)...' }],
+				});
+			}
 
+			const result = await installSkillsApi(opts);
 			if (!result.success) {
 				return {
 					content: [
-						{ type: 'text', text: `Sync failed: ${result.error?.message || 'Unknown error'}` },
+						{
+							type: 'text',
+							text: `Skills install failed: ${result.error?.message || 'Unknown error'}`,
+						},
 					],
 					isError: true,
 				};
 			}
 
-			const data = result.data as { skillsSynced: number; method: string };
-			const customSkillNote = fs.existsSync(path.join(PACKAGE_ROOT, 'skills-custom'))
-				? '\n**Custom skills**: Merged from skills-custom/'
-				: '';
+			// Dry-run: show plan
+			if (opts.dryRun && 'wouldExecute' in (result.data || {})) {
+				const dr = result.data as {
+					actions: Array<{ type: string; description: string }>;
+				};
+				return {
+					content: [
+						{
+							type: 'text',
+							text: [
+								'# Skills Install — Dry Run',
+								'',
+								'## Plan',
+								...dr.actions.map((a) => `- **${a.type}**: ${a.description}`),
+								'',
+								'Run without `dryRun` to apply.',
+							].join('\n'),
+						},
+					],
+					details: dr,
+				};
+			}
+
+			const data = result.data as {
+				customSkills: string[];
+				upstreamSuccess: boolean;
+				upstreamCommand?: string;
+				upstreamError?: string;
+				warnings: string[];
+			};
+			const lines = [
+				'# Skills Installed',
+				'',
+				`**Custom skills**: ${data.customSkills.length} copied (from skills/)`,
+				`**Upstream**: ${data.upstreamSuccess ? '✅ pulled via npx skills' : '⚠ skipped (see warnings)'}`,
+			];
+			if (data.upstreamCommand) lines.push(`  - ${data.upstreamCommand}`);
+			if (data.upstreamError) lines.push(`  - Error: ${data.upstreamError}`);
+			if (data.warnings.length) {
+				lines.push('', '**Warnings**:');
+				for (const w of data.warnings) lines.push(`- ${w}`);
+			}
 			return {
+				content: [{ type: 'text', text: lines.join('\n') }],
+				details: data,
+			};
+		},
+	});
+
+	// --- wp_skills_update ---
+	pi.registerTool({
+		name: 'wp_skills_update',
+		label: 'WP Skills Update',
+		description:
+			'Update WordPress Agent Kit skills in a project. Re-copies our 9 vendored custom skills (from skills/) into .agents/skills/, then runs `npx skills update` to refresh the 17 upstream skills. The upstream step never aborts the custom-skill refresh on failure. Use dryRun: true to preview.',
+		promptSnippet: 'Update WordPress agent skills (custom bundle + upstream via npx skills update)',
+		promptGuidelines: [
+			'Use wp_skills_update to refresh skills in an existing project after a kit upgrade.',
+			'Use wp_skills_update with dryRun: true to preview before applying.',
+		],
+		parameters: Type.Object({
+			targetDir: Type.Optional(
+				Type.String({
+					description: 'WordPress project directory (defaults to current working directory)',
+				})
+			),
+			dryRun: Type.Optional(
+				Type.Boolean({ description: 'Preview without applying (default: false)' })
+			),
+			force: Type.Optional(
+				Type.Boolean({ description: 'Overwrite existing custom skills (default: false)' })
+			),
+		}),
+		async execute(_callId, params, _signal, onUpdate, _ctx) {
+			const targetDir = params.targetDir || process.cwd();
+			const opts = {
+				targetDir,
+				dryRun: params.dryRun ?? false,
+				force: params.force ?? false,
+			};
+
+			onUpdate?.({
 				content: [
 					{
 						type: 'text',
-						text: `# Skills Synced\n\n**Synced**: ${data.skillsSynced} skills\n**Method**: ${data.method}${customSkillNote}`,
+						text: opts.dryRun ? 'Planning skills update (dry-run)...' : 'Updating skills...',
 					},
 				],
+			});
+
+			const result = await updateSkillsApi(opts);
+			if (!result.success) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `Skills update failed: ${result.error?.message || 'Unknown error'}`,
+						},
+					],
+					isError: true,
+				};
+			}
+
+			if (opts.dryRun && 'wouldExecute' in (result.data || {})) {
+				const dr = result.data as { actions: Array<{ type: string; description: string }> };
+				return {
+					content: [
+						{
+							type: 'text',
+							text: [
+								'# Skills Update — Dry Run',
+								'',
+								'## Plan',
+								...dr.actions.map((a) => `- **${a.type}**: ${a.description}`),
+								'',
+								'Run without `dryRun` to apply.',
+							].join('\n'),
+						},
+					],
+					details: dr,
+				};
+			}
+
+			const data = result.data as {
+				customSkills: string[];
+				upstreamSuccess: boolean;
+				upstreamCommand?: string;
+				upstreamError?: string;
+				warnings: string[];
+			};
+			const lines = [
+				'# Skills Updated',
+				'',
+				`**Custom skills**: ${data.customSkills.length} refreshed (from skills/)`,
+				`**Upstream**: ${data.upstreamSuccess ? '✅ refreshed via npx skills update' : '⚠ skipped (see warnings)'}`,
+			];
+			if (data.upstreamCommand) lines.push(`  - ${data.upstreamCommand}`);
+			if (data.upstreamError) lines.push(`  - Error: ${data.upstreamError}`);
+			if (data.warnings.length) {
+				lines.push('', '**Warnings**:');
+				for (const w of data.warnings) lines.push(`- ${w}`);
+			}
+			return {
+				content: [{ type: 'text', text: lines.join('\n') }],
 				details: data,
 			};
 		},
@@ -704,18 +872,41 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	pi.registerCommand('wp-sync-skills', {
-		description: 'Sync WordPress skills from upstream',
+	pi.registerCommand('wp-skills-install', {
+		description: 'Install WordPress skills (custom bundle + upstream via npx skills)',
 		handler: async (args, ctx) => {
-			ctx.ui.setStatus('wp-sync', 'Syncing...');
-			const result = await syncSkillsApi({ targetDir: PACKAGE_ROOT, ref: args?.trim() || 'trunk' });
+			const targetDir = args?.trim() || ctx.cwd;
+			ctx.ui.setStatus('wp-skills', 'Installing skills...');
+			const result = await installSkillsApi({ targetDir });
 			if (!result.success) {
-				ctx.ui.notify(`Sync failed: ${result.error?.message}`, 'error');
+				ctx.ui.notify(`Skills install failed: ${result.error?.message}`, 'error');
 				return;
 			}
-			const data = result.data as { skillsSynced: number };
-			ctx.ui.notify(`Synced ${data.skillsSynced} skills`, 'info');
-			ctx.ui.setStatus('wp-agent-kit', `${data.skillsSynced} skills`);
+			const data = result.data as { customSkills: string[]; upstreamSuccess: boolean };
+			ctx.ui.notify(
+				`${data.customSkills.length} custom + ${data.upstreamSuccess ? 'upstream ok' : 'upstream skipped'}`,
+				data.upstreamSuccess ? 'info' : 'warning'
+			);
+			ctx.ui.setStatus('wp-skills', `${data.customSkills.length} custom installed`);
+		},
+	});
+
+	pi.registerCommand('wp-skills-update', {
+		description: 'Update WordPress skills (custom bundle + upstream via npx skills update)',
+		handler: async (args, ctx) => {
+			const targetDir = args?.trim() || ctx.cwd;
+			ctx.ui.setStatus('wp-skills', 'Updating skills...');
+			const result = await updateSkillsApi({ targetDir });
+			if (!result.success) {
+				ctx.ui.notify(`Skills update failed: ${result.error?.message}`, 'error');
+				return;
+			}
+			const data = result.data as { customSkills: string[]; upstreamSuccess: boolean };
+			ctx.ui.notify(
+				`${data.customSkills.length} custom refreshed + ${data.upstreamSuccess ? 'upstream ok' : 'upstream skipped'}`,
+				data.upstreamSuccess ? 'info' : 'warning'
+			);
+			ctx.ui.setStatus('wp-skills', `${data.customSkills.length} custom refreshed`);
 		},
 	});
 

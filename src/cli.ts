@@ -63,14 +63,14 @@ program.addHelpText(
 Examples:
   $ wp-agent-kit install --platform github
   $ wp-agent-kit setup --auto --json
-  $ wp-agent-kit sync-skills --ref trunk --ndjson
+  $ wp-agent-kit skills install --dry-run
   $ wp-agent-kit clean-skills --dry-run --json
   $ wp-agent-kit clean-skills --remove --platform github
   $ wp-agent-kit upgrade --check-only --json
 
 
 Programmatic API:
-  import { installKit, syncSkills, runTriage } from 'wordpress-agent-kit/api';
+  import { installKitApi, installSkillsApi, runTriageApi } from 'wordpress-agent-kit/api';
 
 For more info: https://github.com/kylebrodeur/wordpress-agent-kit
 `

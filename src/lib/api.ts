@@ -659,7 +659,7 @@ function getInstalledSummary(targetDir: string, platform: Platform): string[] {
 /**
  * Detect and optionally remove orphaned skills from a target installation.
  * Compares the skills in the target platform directory against the source kit
- * (upstream .agents/skills + skills-custom/) and identifies skills that exist
+ * (vendored skills/ + the 17 upstream names) and identifies skills that exist
  * in the target but not in the source.
  */
 export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<CleanResult>> {
