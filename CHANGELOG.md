@@ -1,3 +1,10 @@
+## [0.8.2] - 2026-07-02 — Fix clean-skills false-orphan deletion + dependabot.yml leak
+
+### Fixed
+
+- **`clean-skills` no longer flags our 9 custom skills as orphans**: `cleanSkillsApi` built the canonical set by reading `PACKAGE_ROOT/skills/`, but `skills/` is not shipped in the npm package — so when run from an `npx` install it only recognized the 17 upstream skills and would have **deleted** our 9 custom skills (wp-bootstrap, wp-gravity-*, wp-pods, wp-wpengine) as false orphans. The canonical set is now the static `CUSTOM_SKILL_NAMES` + `UPSTREAM_SKILL_NAMES` (26), correct regardless of bundling.
+- **`.github/dependabot.yml` no longer shipped/installed into consumer projects**: it is kit-dev config (the kit's own Dependabot), excluded from the npm package via `.npmignore`. Consumers keep their own Dependabot setup. `.github/agents/`, `instructions/`, `prompts/`, and `copilot-instructions.md` still ship (they're the platform content for consumers).
+
 ## [0.8.1] - 2026-07-02 — Docs: fix outdated information
 
 ### Fixed

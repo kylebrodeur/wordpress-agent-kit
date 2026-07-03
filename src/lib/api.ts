@@ -633,22 +633,12 @@ export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<C
 	const { targetDir, platform, dryRun = false, remove = false } = options;
 
 	try {
-		// Canonical skills = our nine vendored custom skills (top-level skills/)
-		// plus the static list of upstream skills installed via `npx skills`.
-		const customSkillsDir = path.join(PACKAGE_ROOT, 'skills');
+		// Canonical skills = our nine custom skills (CUSTOM_SKILL_NAMES) plus the
+		// seventeen upstream skills (UPSTREAM_SKILL_NAMES) — all installed via
+		// `npx skills`. Static lists so this is correct regardless of whether
+		// skills/ is bundled in the npm package (it isn't — skills/ is git-only).
 		const targetSkillsDir = path.join(targetDir, '.agents', 'skills');
-
-		// Build set of canonical skill names (upstream + custom)
-		const canonicalSkills = new Set<string>([...UPSTREAM_SKILL_NAMES]);
-
-		if (fs.existsSync(customSkillsDir)) {
-			for (const entry of fs.readdirSync(customSkillsDir)) {
-				const entryPath = path.join(customSkillsDir, entry);
-				if (fs.statSync(entryPath).isDirectory()) {
-					canonicalSkills.add(entry);
-				}
-			}
-		}
+		const canonicalSkills = new Set<string>([...UPSTREAM_SKILL_NAMES, ...CUSTOM_SKILL_NAMES]);
 
 		// Find orphaned skills in target .agents/skills/
 		const orphanedSkills: string[] = [];

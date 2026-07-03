@@ -16,8 +16,11 @@ vitest.config.ts
 # Git hooks
 .husky/
 
-# CI workflows (but NOT .github/agents/ or .github/instructions/ — those get installed)
+# Kit-dev config (NOT for consumers — they have their own Dependabot/Copilot setup).
+# .github/agents/, .github/instructions/, .github/prompts/, and .github/copilot-instructions.md
+# ARE shipped (platform content for consumers); workflows + this dependabot config are not.
 .github/workflows/
+.github/dependabot.yml
 
 # Skills are NOT shipped in the npm package — they are pulled fresh via `npx skills`
 # (our 9 from kylebrodeur/wordpress-agent-kit, 17 upstream from WordPress/agent-skills).
