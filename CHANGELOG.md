@@ -1,3 +1,13 @@
+## [0.8.4] - 2026-07-06 — Dependency maintenance (security bumps + TypeScript 6)
+
+### Changed
+- **Dependency bumps** (closes 5 open Dependabot PRs, applied directly — no PR): `commander` 13.1.0 → 15.0.0 (runtime dep; verified CLI/help output unchanged), `@earendil-works/pi-coding-agent` 0.78.1 → 0.80.3, `typebox` → 1.3.4, `tsx` 4.21.0 → 4.23.0, `vitest` 2.1.9 → 4.1.10 (+ `@vitest/coverage-v8` to match), `vite` added as an explicit devDependency at 8.1.3 (vitest 4 requires vite ^6/7/8; it was previously an unpinned transitive dep resolving to 5.4.21, which broke vitest 4 at startup), `typescript` 5.9.3 → 6.0.3.
+- **`tsconfig.json`**: added `"types": ["node"]`. TypeScript 6 stopped auto-including `@types/node` global ambient types without an explicit `types` array, which broke every `node:*` import and global (`process`, etc.) across the codebase. This was the actual blocker in the Dependabot typescript-6.0.3 PR (which failed CI) — root-caused and fixed here rather than skipped.
+- Closes the Dependabot alerts for `undici`, `esbuild`, `vite`, `postcss`, `minimatch`, `rollup`, `vitest`, and `@earendil-works/pi-coding-agent` (all were transitive/dev-only — nothing shipped in the npm package was ever affected).
+
+### Verification
+- `tsc --noEmit`, `biome ci .`, `vitest run` (127/127), `tsc` build, and a built-CLI smoke test (`--help`, `install --help`, `--version`) all pass with the full bumped dependency set.
+
 ## [0.8.3] - 2026-07-06 — upgrade version detection, apply-JSON parity, copilot gating, leaked-file cleanup, output fixes
 
 ### Fixed
