@@ -1,4 +1,5 @@
 import { ExitCode, type ExitCode as ExitCodeType } from './exit-codes.js';
+import { KIT_VERSION } from './paths.js';
 
 /** Output format modes */
 export type OutputFormat = 'human' | 'json' | 'quiet' | 'ndjson';
@@ -55,7 +56,7 @@ export class OutputFormatter {
 		this.format = format;
 		this.startTime = Date.now();
 		this.commandName = commandName;
-		this.version = version;
+		this.version = version && version !== '0.0.0' ? version : KIT_VERSION;
 	}
 
 	/** Set output format at runtime */

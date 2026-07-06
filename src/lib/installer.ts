@@ -39,6 +39,7 @@ export interface InstallKitResult {
 	isUpdate: boolean;
 	backupDir: string | null;
 	conflicts?: string[];
+	removed?: string[];
 }
 
 /**
@@ -168,6 +169,13 @@ function fullInstall(targetDir: string, platform: Platform, _force: boolean): In
 		if (fs.existsSync(platformSkills)) {
 			fs.rmSync(platformSkills, { recursive: true, force: true });
 		}
+		// copilot-instructions.md is GitHub-Copilot-specific; only emit for the github platform
+		if (platform !== 'github') {
+			const copilotFile = path.join(targetPlatform, 'copilot-instructions.md');
+			if (fs.existsSync(copilotFile)) {
+				fs.rmSync(copilotFile, { force: true });
+			}
+		}
 	} else {
 		throw new Error('Could not find source .github directory.');
 	}
@@ -282,6 +290,7 @@ function safeUpdateInstall(
 			const filePath = path.join(PLATFORM_FOLDERS[platform], f);
 			return `${filePath} (conflict - user modified, use --force to overwrite)`;
 		}),
+		removed: result.removed.map((f) => path.join(PLATFORM_FOLDERS[platform], f)),
 		errors: [],
 		isUpdate: true,
 		backupDir: result.backupDir,

@@ -26,7 +26,8 @@ export const cleanSkillsCommand = new Command('clean-skills')
 	.option('--remove', 'Actually remove orphaned skills (default: false — report only)', false)
 	.option('--json', 'Output as JSON')
 	.option('--quiet', 'Suppress non-essential output')
-	.action(async (dir: string, options) => {
+	.action(async (dir: string, options, command) => {
+		const globalOpts = command.parent?.opts() || {};
 		const targetDir = dir || process.cwd();
 		const platform = options.platform || 'pi';
 
@@ -37,7 +38,9 @@ export const cleanSkillsCommand = new Command('clean-skills')
 			remove: options.remove,
 		});
 
-		if (options.json || options.quiet) {
+		// Honor both the global flags (--json/--quiet before the subcommand) and
+		// this command's local --json/--quiet. Either way, stdout must be pure JSON.
+		if (globalOpts.json || globalOpts.quiet || options.json || options.quiet) {
 			process.exit(OutputFormatter.getExitCode(result));
 		}
 

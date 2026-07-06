@@ -2,13 +2,28 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/Written%20in-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-0.8.2-blue?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.8.3-blue?style=flat-square)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.18-green?style=flat-square)](package.json)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](.github/workflows/ci.yml)
 
 **WordPress-focused AI agent starter kit** for GitHub Copilot, Cursor, Claude, and Pi Coding Agent. Installs 26 WordPress agent skills (9 custom: bootstrap, WP Engine, Gravity Forms, SMTP, Connect, GravityView, Gravity Wiz, Pods, and the stack orchestrator — pulled via `npx skills add kylebrodeur/wordpress-agent-kit`; 17 upstream — pulled via `npx skills add WordPress/agent-skills`), an agent persona, workflow instructions, and AGENTS.md configuration — everything an AI coding agent needs to build WordPress plugins, themes, and blocks correctly. The npm package ships ONLY the CLI + platform agents/prompts + AGENTS.template.md; skills are pulled at install time via `npx skills` (requires network + npx).
 
 Maintained by [Kyle Brodeur](https://brodeur.me).
+
+---
+
+## Running the CLI
+
+The npm package is **`wordpress-agent-kit`**; the installed command is **`wp-agent-kit`**. Because the package name and bin name differ, a bare `npx wp-agent-kit …` can 404 on environments where `npx` resolves the literal package `wp-agent-kit` (e.g. the pnpm `npx`→`pnpm dlx` shim). Use any of these runner-agnostic forms instead:
+
+```bash
+npx --package wordpress-agent-kit -- wp-agent-kit <command>   # npm
+npm exec --package wordpress-agent-kit -- wp-agent-kit <command>
+pnpm --package=wordpress-agent-kit dlx wp-agent-kit <command>  # pnpm
+# or, simplest: `npx wordpress-agent-kit <command>` (runs the package's wp-agent-kit bin)
+```
+
+The examples below use the short `wp-agent-kit <command>` form for brevity — substitute your runner form above.
 
 ---
 

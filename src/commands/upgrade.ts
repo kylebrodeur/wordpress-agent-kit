@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { type CliResult, type DryRunResult, type Platform, installKitApi } from '../lib/api.js';
+import {
+	type CliResult,
+	type DryRunResult,
+	type Platform,
+	installKitApi,
+	loadManifest,
+} from '../lib/api.js';
 import { PLATFORM_FOLDERS } from '../lib/installer.js';
 import { ExitCode } from '../utils/exit-codes.js';
 import { OutputFormatter, createFormatter } from '../utils/output.js';
@@ -33,16 +39,34 @@ const CURRENT_VERSION = (() => {
 	}
 })();
 
-/** Version detection from installed kit */
+/** Version detection from installed kit.
+ *  Authority order: per-platform manifest `version` → AGENTS.md marker →
+ *  package.json devDependency. The manifest is what `install`/`upgrade`
+ *  itself writes, so it's authoritative for npx/dlx installs (where no
+ *  local node_modules entry exists). */
 function detectInstalledVersion(targetDir: string): string | null {
-	// Check AGENTS.md for version marker
+	// 1. Per-platform manifests (.wp-agent-kit-manifest.<platform>.json)
+	const platforms: Platform[] = ['github', 'cursor', 'claude', 'agent', 'pi'];
+	let best: string | null = null;
+	for (const p of platforms) {
+		const manifest = loadManifest(targetDir, p);
+		if (manifest?.version && /^\d+\.\d+\.\d+/.test(manifest.version)) {
+			if (!best || compareVersions(manifest.version, best) > 0) {
+				best = manifest.version;
+			}
+		}
+	}
+	if (best) return best;
+
+	// 2. AGENTS.md version marker
 	const agentsPath = path.join(targetDir, 'AGENTS.md');
 	if (fs.existsSync(agentsPath)) {
 		const content = fs.readFileSync(agentsPath, 'utf-8');
 		const match = content.match(/wp-agent-kit[:\s]+v?(\d+\.\d+\.\d+)/i);
 		if (match) return match[1];
 	}
-	// Check package.json if exists in target
+
+	// 3. package.json devDependency (local install)
 	const pkgPath = path.join(targetDir, 'package.json');
 	if (fs.existsSync(pkgPath)) {
 		try {

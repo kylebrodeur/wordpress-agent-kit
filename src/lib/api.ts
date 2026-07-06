@@ -9,7 +9,7 @@ import path from 'node:path';
 import { ExitCode, withExitCode } from '../utils/exit-codes.js';
 import { type CliResult, type DryRunResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
-import { type Platform, installKit } from './installer.js';
+import { type InstallKitResult, type Platform, installKit } from './installer.js';
 import {
 	CUSTOM_SKILL_NAMES,
 	type SkillsInstallOptions,
@@ -53,6 +53,7 @@ export interface InstallResult {
 	isUpdate: boolean;
 	backupDir: string | null;
 	conflicts?: string[];
+	removed?: string[];
 }
 
 /** Options for installKit */
@@ -161,23 +162,22 @@ export async function installKitApi(options: InstallOptions): Promise<ApiResult<
 			return dryRunInstall(targetDir, platform, { force, safe, backup });
 		}
 
-		await withExitCode(async () => {
-			installKit(targetDir, platform, { force, safe, backup });
-			return { success: true };
+		const installResult = await withExitCode(async () => {
+			return installKit(targetDir, platform, { force, safe, backup });
 		});
 
-		const filesCreated = getInstalledSummary(targetDir, platform);
 		const durationMs = Date.now() - startTime;
-
 		return formatter.success({
 			targetDir,
 			platform,
-			filesCreated,
-			filesSkipped: [],
+			filesCreated: installResult.filesCreated,
+			filesSkipped: installResult.filesSkipped,
+			conflicts: installResult.conflicts ?? [],
+			removed: installResult.removed ?? [],
 			errors: [],
 			durationMs,
-			isUpdate: isKitInstalled(targetDir, platform),
-			backupDir: null,
+			isUpdate: installResult.isUpdate,
+			backupDir: installResult.backupDir,
 		});
 	} catch (error: unknown) {
 		const err = error as Error & { code?: string; exitCode?: ExitCode };
@@ -208,7 +208,14 @@ function dryRunInstall(
 		const actions: DryRunResult['actions'] = changes.map((c) => {
 			const target = path.join(targetDir, platformFolder, c.relativePath);
 			return {
-				type: c.action === 'created' ? 'create' : c.action === 'updated' ? 'update' : 'skip',
+				type:
+					c.action === 'created'
+						? 'create'
+						: c.action === 'updated'
+							? 'update'
+							: c.action === 'remove'
+								? 'delete'
+								: 'skip',
 				target,
 				description: `${c.action}: ${c.relativePath}${c.reason ? ` (${c.reason})` : ''}`,
 			};
@@ -248,6 +255,9 @@ function dryRunInstall(
 				backupDir: null,
 				conflicts: changes
 					.filter((c) => c.action === 'conflict')
+					.map((c) => path.join(platformFolder, c.relativePath)),
+				removed: changes
+					.filter((c) => c.action === 'remove')
 					.map((c) => path.join(platformFolder, c.relativePath)),
 			},
 		});
@@ -570,55 +580,6 @@ function getPlatformFolder(platform: Platform): string {
 		pi: '.pi/agent',
 	};
 	return folders[platform];
-}
-
-/**
- * Get summary of installed files grouped by directory.
- */
-function getInstalledSummary(targetDir: string, platform: Platform): string[] {
-	const platformFolder = getPlatformFolder(platform);
-	const summary: string[] = [];
-	const targetPlatform = path.join(targetDir, platformFolder);
-
-	if (fs.existsSync(targetPlatform)) {
-		// Walk top-level entries for clean summary
-		const topEntries = fs.readdirSync(targetPlatform);
-		for (const entry of topEntries) {
-			const fullPath = path.join(targetPlatform, entry);
-			const stat = fs.statSync(fullPath);
-			if (stat.isDirectory()) {
-				let totalFiles = 0;
-				let totalDirs = 0;
-				function countAll(dir: string): void {
-					const items = fs.readdirSync(dir);
-					for (const item of items) {
-						const itemPath = path.join(dir, item);
-						const s = fs.statSync(itemPath);
-						if (s.isDirectory()) {
-							totalDirs++;
-							countAll(itemPath);
-						} else {
-							totalFiles++;
-						}
-					}
-				}
-				countAll(fullPath);
-				summary.push(`${platformFolder}/${entry}/ (${totalDirs + 1} dirs, ${totalFiles} files)`);
-			}
-		}
-	}
-
-	const agentsPath = path.join(targetDir, 'AGENTS.md');
-	if (fs.existsSync(agentsPath)) {
-		summary.push('AGENTS.md');
-	}
-
-	const agentsTemplatePath = path.join(targetDir, 'AGENTS.template.md');
-	if (fs.existsSync(agentsTemplatePath)) {
-		summary.push('AGENTS.template.md');
-	}
-
-	return summary;
 }
 
 /**

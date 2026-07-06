@@ -1,3 +1,25 @@
+## [0.8.3] - 2026-07-06 — upgrade version detection, apply-JSON parity, copilot gating, leaked-file cleanup, output fixes
+
+### Fixed
+- **B1 — `upgrade` now detects the installed version from the manifest**: previously `upgrade --check-only` reported `currentVersion:"unknown"` (silent no-op) for npx/dlx installs with no local `node_modules` entry, even when a valid `.wp-agent-kit-manifest.<platform>.json` with a `version` field was present. Version detection now reads the per-platform manifest `version` first (authoritative), then AGENTS.md marker, then package.json devDep.
+- **C1 — apply-mode `install --json` now matches dry-run output**: apply mode returned coarse directory summaries (`".github/skills/ (42 dirs, 103 files)"`) and `filesSkipped:[]` even when ~106 files were skipped. It now returns per-file `filesCreated`/`filesSkipped`/`conflicts`/`removed` from the actual safe-update result, matching what the dry-run previews.
+- **A1 — `copilot-instructions.md` is now github-only**: `install --platform claude|pi|cursor|agent` no longer emits the GitHub-Copilot-specific `copilot-instructions.md` into non-github platform dirs (it was dead weight there and got re-added on every platform install because it stayed in those manifests). The updater also excludes it from the source set + manifest for non-github platforms.
+- **A2 — leaked `.github/dependabot.yml` is cleaned up on upgrade**: the kit's own Dependabot config leaked into consumer projects in 0.8.0–0.8.1. 0.8.2 stopped shipping it but left existing copies as "user-added (preserved)". On upgrade, a `dependabot.yml` whose hash matches the known leaked default is now detected and removed (backed up first); a genuine consumer `dependabot.yml` with different content is preserved.
+- **C2 — `clean-skills --json` stdout is now pure JSON**: a trailing human line ("Dry-run: N orphaned…") was printed to stdout after the JSON, breaking `JSON.parse`. The command now honors the global `--json`/`--quiet` flags (not just its local ones) and suppresses human output, keeping stdout pure JSON.
+- **C3 — `meta.version` is now the real package version across all commands**: `install` and `clean-skills` reported `meta.version:"0.0.0"`. The `OutputFormatter` now substitutes the real `KIT_VERSION` (read from package.json) whenever the `0.0.0` sentinel is passed.
+
+### Added
+- **B3 — regression test** for the 0.8.1 `clean-skills` false-orphan bug: asserts zero orphans when `.agents/skills/` contains all 26 kit skills (our 9 + 17 upstream), and that a genuinely-extra skill is the only one flagged.
+- **A2 test** for leaked-default cleanup: the leaked `dependabot.yml` hash is matched for removal; a modified consumer copy is preserved.
+
+### Docs
+- **D1 — runner-agnostic CLI forms**: documented that the package name (`wordpress-agent-kit`) ≠ bin name (`wp-agent-kit`), so a bare `npx wp-agent-kit …` can 404 under pnpm's `npx`→`pnpm dlx` shim; added the `npx --package wordpress-agent-kit -- wp-agent-kit …` / `npm exec` / `pnpm dlx` forms.
+
+### Not addressed (deferred)
+- **B2 — manifest-less platforms (claude/pi) can't safely distinguish stale kit content from user edits.** The proper fix requires bundling a set of known past-release hashes per file so stale kit content can be auto-updated without `--force`. This is a larger feature; for now, back up + `--force` + diff remains the path for manifest-less platforms (0.8.2+ writes a manifest on first install, so this only affects pre-manifest installs).
+- **C4 — per-subcommand `--help`**: verified working in the current version (`upgrade --help`, `skills install --help` show their own flags); the field report was likely environment-specific (pnpm dlx shim). No change needed.
+- **B4 — `clean-skills` legacy-dir migrate**: verified already safe — migration only copies a legacy skill when `.agents/skills/<skill>` does NOT already exist (never overwrites fresh skills with stale legacy copies). No change needed.
+
 ## [0.8.2] - 2026-07-02 — Fix clean-skills false-orphan deletion + dependabot.yml leak
 
 ### Fixed

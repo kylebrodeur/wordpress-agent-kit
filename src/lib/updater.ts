@@ -38,7 +38,7 @@ export interface UpdateOptions {
 /** Individual file change */
 export interface FileChange {
 	relativePath: string;
-	action: 'created' | 'updated' | 'skipped' | 'conflict' | 'unchanged';
+	action: 'created' | 'updated' | 'skipped' | 'conflict' | 'unchanged' | 'remove';
 	reason?: string;
 }
 
@@ -51,6 +51,7 @@ export interface UpdateResult {
 	updated: string[];
 	skipped: string[];
 	conflicts: string[];
+	removed: string[];
 	backupDir: string | null;
 	manifestUpdated: boolean;
 }
@@ -92,6 +93,27 @@ function walkDir(dir: string): string[] {
 	}
 	return result;
 }
+
+/** Files in .github/ that are GitHub-Copilot-specific — only install for the github platform. */
+const GITHUB_ONLY_FILES = new Set(['copilot-instructions.md']);
+
+/** Walk the kit's .github source, excluding files inappropriate for the target platform. */
+function walkSourceForPlatform(platform: Platform): string[] {
+	return walkDir(path.join(PACKAGE_ROOT, '.github')).filter(
+		(file) => platform === 'github' || !GITHUB_ONLY_FILES.has(file)
+	);
+}
+
+/**
+ * Files the kit previously leaked into consumer projects (pre-0.8.2) and no
+ * longer ships. On upgrade, if such a file's hash matches a known leaked
+ * default, it's safe to remove — a genuine consumer file with different
+ * content is preserved.
+ */
+const KNOWN_LEAKED_HASHES: Record<string, string[]> = {
+	// The kit's own Dependabot config, leaked by install in 0.8.0–0.8.1.
+	'dependabot.yml': ['aab0a15e7b849ab8bed3a130472bb2bd0dbd0b10fc6cd35896a89647f62f59c1'],
+};
 
 /** Load existing manifest if present */
 export function loadManifest(targetDir: string, platform: Platform): KitManifest | null {
@@ -144,7 +166,7 @@ export function computeChanges(
 	const targetPlatform = getPlatformTarget(targetDir, platform);
 	const changes: FileChange[] = [];
 
-	const sourceFiles = walkDir(sourceDir);
+	const sourceFiles = walkSourceForPlatform(platform);
 	const targetFiles = fs.existsSync(targetPlatform) ? walkDir(targetPlatform) : [];
 
 	// Build lookup of known files from manifest
@@ -222,11 +244,23 @@ export function computeChanges(
 	const sourceSet = new Set(sourceFiles);
 	for (const targetFile of targetFiles) {
 		if (!sourceSet.has(targetFile)) {
-			changes.push({
-				relativePath: targetFile,
-				action: 'unchanged',
-				reason: 'User-added file (preserved)',
-			});
+			// Not in the kit source. If it matches a known kit-leaked default
+			// (e.g. the 0.8.0–0.8.1 dependabot.yml leak), mark for safe removal.
+			// A genuine consumer file with different content stays preserved.
+			const leakedHashes = KNOWN_LEAKED_HASHES[targetFile];
+			if (leakedHashes?.includes(hashFile(path.join(targetPlatform, targetFile)))) {
+				changes.push({
+					relativePath: targetFile,
+					action: 'remove',
+					reason: 'Leaked kit default (safe to remove on upgrade)',
+				});
+			} else {
+				changes.push({
+					relativePath: targetFile,
+					action: 'unchanged',
+					reason: 'User-added file (preserved)',
+				});
+			}
 		}
 	}
 
@@ -247,9 +281,12 @@ export function updateKit(options: UpdateOptions): UpdateResult {
 	const updated: string[] = [];
 	const skipped: string[] = [];
 	const conflicts: string[] = [];
+	const removed: string[] = [];
 
-	// Determine which files will be overwritten (for backup)
-	const filesToBackup = changes.filter((c) => c.action === 'updated').map((c) => c.relativePath);
+	// Determine which files will be overwritten or removed (for backup)
+	const filesToBackup = changes
+		.filter((c) => c.action === 'updated' || c.action === 'remove')
+		.map((c) => c.relativePath);
 
 	let backupDir: string | null = null;
 	if (backup && filesToBackup.length > 0) {
@@ -278,6 +315,10 @@ export function updateKit(options: UpdateOptions): UpdateResult {
 			case 'conflict':
 				conflicts.push(change.relativePath);
 				break;
+			case 'remove':
+				fs.rmSync(targetPath, { force: true });
+				removed.push(change.relativePath);
+				break;
 			// 'unchanged' - do nothing
 		}
 	}
@@ -287,7 +328,7 @@ export function updateKit(options: UpdateOptions): UpdateResult {
 		version: getPackageVersion(),
 		platform,
 		installedAt: new Date().toISOString(),
-		files: walkDir(sourceDir).map((file) => ({
+		files: walkSourceForPlatform(platform).map((file) => ({
 			path: file,
 			hash: hashFile(path.join(sourceDir, file)),
 		})),
@@ -302,6 +343,7 @@ export function updateKit(options: UpdateOptions): UpdateResult {
 		updated,
 		skipped,
 		conflicts,
+		removed,
 		backupDir,
 		manifestUpdated: true,
 	};
