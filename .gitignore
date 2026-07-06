@@ -8,7 +8,7 @@ vendor/wp-agent-skills/
 .agents/skills/
 package-lock.json
 
-# Upstream sync buffer — canonical skills live in .agents/skills/
+# Legacy sync buffer (sync-skills command removed; kept to prevent accidental creation)
 .github/skills/
 
 # Personal development prompts (not for distribution)
