@@ -51,7 +51,7 @@
 		"prepublishOnly": "pnpm run build && pnpm run lint:check && pnpm run test:run"
 	},
 	"dependencies": {
-		"@clack/prompts": "^0.8.2",
+		"@clack/prompts": "^1.7.0",
 		"commander": "^15.0.0"
 	},
 	"peerDependencies": {
