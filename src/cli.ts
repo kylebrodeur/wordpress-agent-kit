@@ -9,8 +9,7 @@ import { setupCommand } from './commands/setup.js';
 import { skillsCommand } from './commands/skills.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { ExitCode } from './utils/exit-codes.js';
-import { createFormatter } from './utils/output.js';
-import { OutputFormatter } from './utils/output.js';
+import { createFormatter, OutputFormatter } from './utils/output.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');

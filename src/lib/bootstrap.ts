@@ -10,7 +10,7 @@ import path from 'node:path';
 import { ExitCode } from '../utils/exit-codes.js';
 import { type CliResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
-import { type Platform, installKit } from './installer.js';
+import { installKit, type Platform } from './installer.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

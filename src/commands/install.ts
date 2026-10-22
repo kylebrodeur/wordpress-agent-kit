@@ -8,7 +8,7 @@ import {
 	isKitInstalled,
 	loadManifest,
 } from '../lib/api.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { createFormatter, OutputFormatter } from '../utils/output.js';
 
 function isDryRunResult<T>(
 	result: CliResult<T | DryRunResult<T>>

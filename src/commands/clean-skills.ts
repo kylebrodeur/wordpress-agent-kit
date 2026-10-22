@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { type CleanResult, type CliResult, type DryRunResult, cleanSkillsApi } from '../lib/api.js';
+import { type CleanResult, type CliResult, cleanSkillsApi, type DryRunResult } from '../lib/api.js';
 import { OutputFormatter } from '../utils/output.js';
 
 function isDryRunResult<T>(

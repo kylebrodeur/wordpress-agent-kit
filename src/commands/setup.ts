@@ -5,22 +5,22 @@ import * as p from '@clack/prompts';
 import { Command } from 'commander';
 import {
 	type CliResult,
+	configureAgentsMdApi,
 	type DryRunResult,
+	installKitApi,
 	type Platform,
 	type ProjectConfig,
-	configureAgentsMdApi,
-	installKitApi,
 } from '../lib/api.js';
 import { PLATFORM_FOLDERS } from '../lib/installer.js';
 import {
-	type TriageResult as TriageResultType,
 	formatDetectionResults,
 	hasConfidentDetection,
 	mapProjectType,
 	mapTechStack,
+	type TriageResult as TriageResultType,
 } from '../lib/triage-mapper.js';
 import { ExitCode } from '../utils/exit-codes.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { createFormatter, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 
 const VALID_PROJECT_TYPES = ['plugin', 'theme', 'block-theme', 'site', 'blocks', 'other'] as const;

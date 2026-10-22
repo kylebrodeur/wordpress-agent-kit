@@ -1,9 +1,9 @@
 import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	installSkills,
 	OUR_SKILLS_SOURCE,
 	UPSTREAM_SKILLS_SOURCE,
-	installSkills,
 	updateSkills,
 } from '../../src/lib/skills-lifecycle.js';
 

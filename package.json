@@ -28,7 +28,9 @@
 		"./api": "./dist/lib/api.js"
 	},
 	"pi": {
-		"extensions": ["./extensions/wp-agent-kit"]
+		"extensions": [
+			"./extensions/wp-agent-kit"
+		]
 	},
 	"scripts": {
 		"dev": "tsx src/cli.ts",
@@ -59,7 +61,7 @@
 		"typebox": "*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
+		"@biomejs/biome": "2.5.3",
 		"@earendil-works/pi-coding-agent": "^0.80.3",
 		"@types/node": "^22.10.1",
 		"@vitest/coverage-v8": "^4.1.10",
