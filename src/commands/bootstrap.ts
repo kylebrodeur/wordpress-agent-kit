@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { type BootstrapResult, bootstrapApi } from '../lib/api.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { createFormatter, OutputFormatter } from '../utils/output.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

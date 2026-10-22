@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { Command } from 'commander';
 import { ExitCode } from '../utils/exit-codes.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { createFormatter, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
 
 /**

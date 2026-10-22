@@ -3,8 +3,8 @@ import { Command } from 'commander';
 import {
 	type CliResult,
 	type DryRunResult,
-	type SkillsApiResult,
 	installSkillsApi,
+	type SkillsApiResult,
 	updateSkillsApi,
 } from '../lib/api.js';
 import { OutputFormatter } from '../utils/output.js';

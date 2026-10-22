@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { type InstallKitResult, installKit } from '../../src/lib/installer.js';
 import { PACKAGE_ROOT } from '../../src/utils/paths.js';
 

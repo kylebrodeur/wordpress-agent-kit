@@ -9,14 +9,14 @@ import path from 'node:path';
 import { ExitCode, withExitCode } from '../utils/exit-codes.js';
 import { type CliResult, type DryRunResult, OutputFormatter } from '../utils/output.js';
 import { PACKAGE_ROOT } from '../utils/paths.js';
-import { type InstallKitResult, type Platform, installKit } from './installer.js';
+import { type InstallKitResult, installKit, type Platform } from './installer.js';
 import {
 	CUSTOM_SKILL_NAMES,
+	installSkills,
 	type SkillsInstallOptions,
 	type SkillsResult,
 	type SkillsUpdateOptions,
 	UPSTREAM_SKILL_NAMES,
-	installSkills,
 	updateSkills,
 } from './skills-lifecycle.js';
 import { computeChanges, isKitInstalled } from './updater.js';
@@ -706,14 +706,13 @@ export async function cleanSkillsApi(options: CleanOptions): Promise<ApiResult<C
 	}
 }
 
-/** Re-export types */
-export type { Platform } from './installer.js';
-export type { FileChange, UpdateOptions, UpdateResult } from './updater.js';
-export type { CliResult, DryRunResult, OutputFormat, ProgressEvent } from '../utils/output.js';
 export { ExitCode } from '../utils/exit-codes.js';
-export { OutputFormatter, createFormatter, parseOutputFormat } from '../utils/output.js';
-export { computeChanges, isKitInstalled, loadManifest, updateKit } from './updater.js';
-
+export type { CliResult, DryRunResult, OutputFormat, ProgressEvent } from '../utils/output.js';
+export { createFormatter, OutputFormatter, parseOutputFormat } from '../utils/output.js';
 /** Bootstrap API */
 export type { BootstrapOptions, BootstrapResult } from './bootstrap.js';
 export { bootstrapApi } from './bootstrap.js';
+/** Re-export types */
+export type { Platform } from './installer.js';
+export type { FileChange, UpdateOptions, UpdateResult } from './updater.js';
+export { computeChanges, isKitInstalled, loadManifest, updateKit } from './updater.js';

@@ -5,13 +5,13 @@ import { Command } from 'commander';
 import {
 	type CliResult,
 	type DryRunResult,
-	type Platform,
 	installKitApi,
 	loadManifest,
+	type Platform,
 } from '../lib/api.js';
 import { PLATFORM_FOLDERS } from '../lib/installer.js';
 import { ExitCode } from '../utils/exit-codes.js';
-import { OutputFormatter, createFormatter } from '../utils/output.js';
+import { createFormatter, OutputFormatter } from '../utils/output.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
