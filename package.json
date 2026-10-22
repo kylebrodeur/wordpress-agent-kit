@@ -69,7 +69,7 @@
 		"ts-node": "^10.9.2",
 		"tsx": "^4.23.0",
 		"typebox": "*",
-		"typescript": "^6.0.3",
+		"typescript": "^7.0.2",
 		"vite": "^8.3.5",
 		"vitest": "^4.1.11"
 	},
