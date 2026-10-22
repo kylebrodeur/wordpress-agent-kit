@@ -46,7 +46,7 @@ importers:
         version: 4.23.0
       typebox:
         specifier: '*'
-        version: 1.1.38
+        version: 1.3.6
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1341,6 +1341,9 @@ packages:
 
   typebox@1.1.38:
     resolution: {integrity: sha512-pZ0aQPmMmXoUvSbeuWf/Hzsc+avNw/Zd6VeE8CFgkVGWyuHPJvqeJJDeJqLve+K70LvjYIoleGcoJHPT17cWoA==}
+
+  typebox@1.3.6:
+    resolution: {integrity: sha512-Sc8RA0NCMEFmApHNU9ZMzqcpQj46She44J8ffpLM/bdhLNUZKq7DJumcLcsFx1gRmDfQPgCgOmFFJ7rcnfWNyA==}
 
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
@@ -2736,6 +2739,8 @@ snapshots:
       fsevents: 2.3.3
 
   typebox@1.1.38: {}
+
+  typebox@1.3.6: {}
 
   typescript@6.0.3: {}
 
