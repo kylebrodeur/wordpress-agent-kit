@@ -7,7 +7,7 @@ optional: true
 
 # Pods Framework
 
-Pods manages WordPress custom content types (CPTs), taxonomies, and custom database tables (Advanced Content Types). It is the primary data structure layer for the U of Digital site — all custom content models, field definitions, and relational data flow through Pods.
+Pods manages WordPress custom content types (CPTs), taxonomies, and custom database tables (Advanced Content Types). It is the primary data structure layer for the site — all custom content models, field definitions, and relational data flow through Pods.
 
 ## When to use
 
