@@ -1,5 +1,8 @@
 # SatisPress Configuration for the Gravity Stack
 
+> Values in angle brackets are per-site. The values for a specific WordPress site live in that site's skill set (for U of D, `uofd-wp/skills`).
+
+
 SatisPress turns a WordPress site into a private Composer repository for premium plugins.
 Use it to manage Gravity Forms, Gravity SMTP, Gravity Wiz products, and GravityView
 via Composer — enabling reproducible installs, version pinning, and CI/CD workflows.
@@ -26,12 +29,12 @@ wp plugin install satispress --activate
 
 ---
 
-## `composer.json` — U of Digital full stack
+## `composer.json` — full stack
 
 ```json
 {
-  "name": "uofdigital/uofd-site",
-  "description": "U of Digital WordPress site — Gravity Stack",
+  "name": "<vendor>/<site>",
+  "description": "WordPress site — Gravity Stack",
   "type": "project",
   "license": "proprietary",
   "require": {
@@ -67,7 +70,7 @@ wp plugin install satispress --activate
     },
     "satispress": {
       "type": "composer",
-      "url": "https://packages.uof.digital/satispress/"
+      "url": "https://<satispress-host>/satispress/"
     }
   },
   "config": {
@@ -104,7 +107,7 @@ Store per-machine, **never commit to git**. Add `auth.json` to `.gitignore`.
 ```json
 {
   "http-basic": {
-    "packages.uof.digital": {
+    "<satispress-host>": {
       "username": "<32-char-satispress-api-key>",
       "password": "satispress"
     }
@@ -114,7 +117,7 @@ Store per-machine, **never commit to git**. Add `auth.json` to `.gitignore`.
 
 Set via CLI:
 ```bash
-composer config http-basic.packages.uof.digital <API_KEY> satispress
+composer config http-basic.<satispress-host> <API_KEY> satispress
 ```
 
 For GitHub Actions, store the full `auth.json` as a secret:
@@ -198,8 +201,8 @@ define('GF_LICENSE_KEY', getenv('GF_LICENSE_KEY'));
 // Gravity SMTP — credentials in constants, not wp_options (CVE-2026-4020 mitigation)
 define('GRAVITY_SMTP_PROVIDER', 'sendgrid');
 define('GRAVITY_SMTP_SENDGRID_API_KEY', getenv('SENDGRID_API_KEY'));
-define('GRAVITY_SMTP_FROM_EMAIL', 'noreply@uof.digital');
-define('GRAVITY_SMTP_FROM_NAME', 'U of Digital');
+define('GRAVITY_SMTP_FROM_EMAIL', '<from-email>');
+define('GRAVITY_SMTP_FROM_NAME', '<Site Name>');
 
 // Gravity Connect / OpenAI
 define('OPENAI_API_KEY', getenv('OPENAI_API_KEY'));
@@ -207,7 +210,7 @@ define('OPENAI_API_KEY', getenv('OPENAI_API_KEY'));
 // Local dev: remote media (never deploy — remove or gate with WP_ENV check)
 if (defined('WP_LOCAL_DEV') && WP_LOCAL_DEV) {
     // Set via WP-CLI after DB pull instead of here:
-    // wp option update upload_url_path 'https://dev.uof.digital/wp-content/uploads'
+    // wp option update upload_url_path 'https://<dev-host>/wp-content/uploads'
 }
 ```
 

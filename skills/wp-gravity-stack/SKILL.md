@@ -70,7 +70,7 @@ Quick reference:
   "repositories": {
     "wpackagist": { "type": "composer", "url": "https://wpackagist.org",
                     "only": ["wpackagist-plugin/*","wpackagist-theme/*"] },
-    "satispress":  { "type": "composer", "url": "https://packages.uof.digital/satispress/" }
+    "satispress":  { "type": "composer", "url": "https://<satispress-host>/satispress/" }
   },
   "require": {
     "wpackagist-plugin/pods":           "^3.0",

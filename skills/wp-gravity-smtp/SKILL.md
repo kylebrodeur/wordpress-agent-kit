@@ -80,7 +80,7 @@ Store credentials in `wp-config.php` constants loaded from environment variables
 // wp-config.php
 define('GRAVITY_SMTP_SENDGRID_API_KEY', getenv('SENDGRID_API_KEY'));
 define('GRAVITY_SMTP_FROM_EMAIL',       getenv('SMTP_FROM_EMAIL'));
-define('GRAVITY_SMTP_FROM_NAME',        'U of Digital');
+define('GRAVITY_SMTP_FROM_NAME',        '<Site Name>');
 ```
 
 Set the env var in WP Engine (Environment Variables in portal) or via `.env` locally.

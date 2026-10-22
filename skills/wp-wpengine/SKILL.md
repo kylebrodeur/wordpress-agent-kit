@@ -632,9 +632,9 @@ Example prompts:
 
 ```
 /wpe-labs:account-usage which accounts are closest to their bandwidth limit?
-/wpe-labs:cache purge all cache for uofdev production
-/wpe-labs:backups back up uofdev production before deployment
-/wpe-labs:installs copy uofdev production to staging
+/wpe-labs:cache purge all cache for <install> production
+/wpe-labs:backups back up <install> production before deployment
+/wpe-labs:installs copy <install> production to staging
 /wpe-labs:monthly-report last month
 ```
 
